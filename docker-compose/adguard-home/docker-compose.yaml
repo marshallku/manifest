@@ -1,0 +1,24 @@
+services:
+  adguardhome:
+    image: adguard/adguardhome:v0.107.71
+    container_name: adguardhome
+    restart: unless-stopped
+    volumes:
+      - /mnt/hdd/data/adguard-home/work:/opt/adguardhome/work
+      - /mnt/hdd/data/adguard-home/conf:/opt/adguardhome/conf
+    ports:
+      # DNS
+      - "53:53/tcp"
+      - "53:53/udp"
+      # Web UI
+      - "3080:3000/tcp"
+      - "8888:8888/tcp"
+      # DNS-over-TLS
+      - "853:853/tcp"
+      - "853:853/udp"
+      # DNS-over-QUIC
+      - "784:784/udp"
+      - "8853:8853/udp"
+      # DNSCrypt
+      - "5443:5443/tcp"
+      - "5443:5443/udp"
