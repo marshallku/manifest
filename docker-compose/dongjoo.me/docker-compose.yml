@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mysql:9.0.1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - /mnt/hdd/data/dongjoo.me/db:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:6.9.0-php8.5-apache
+    depends_on:
+      - db
+    ports:
+      - "8088:80"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('FORCE_SSL_ADMIN', true);
+        if (strpos($$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false)
+          $$_SERVER['HTTPS']='on';
+    volumes:
+      - /mnt/hdd/data/dongjoo.me/html:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - /mnt/hdd/data/dorp:/var/www/html/wp-content/themes/dorp
+
+  remark:
+    image: umputun/remark42:v1.14.0
+    container_name: "remark42"
+    hostname: "remark42"
+    restart: unless-stopped
+    ports:
+      - "8089:8080"
+    env_file:
+      - .env
+    environment:
+      - REMARK_URL=https://dongjoo.me/comments
+      - STORE_BOLT_PATH=/srv/var/db
+      - BACKUP_PATH=/srv/var/backup
+    volumes:
+      - /mnt/hdd/data/dongjoo.me/remark:/srv/var
