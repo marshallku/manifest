@@ -1,0 +1,13 @@
+services:
+    gitgarden:
+        container_name: gitgarden
+        image: "ghcr.io/marshallku/gitgarden:latest"
+        pull_policy: always
+        restart: unless-stopped
+        ports:
+            - ${PORT}:${PORT}
+        env_file:
+            - .env
+        environment:
+            HOST: "0.0.0.0"
+
