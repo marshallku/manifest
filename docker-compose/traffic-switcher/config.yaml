@@ -1,0 +1,31 @@
+services:
+- name: blog-front
+  host: host.docker.internal
+  port: 4201
+  health_check:
+    path: /
+    retry_count: 10
+    retry_delay_seconds: 1
+  previous_port: 4200
+- name: gitgarden
+  host: host.docker.internal
+  port: 18085
+  health_check:
+    path: /
+    retry_count: 10
+    retry_delay_seconds: 1
+routes:
+- domain: marshallku.com
+  service: blog-front
+- domain: api.marshallku.com
+  service: blog-api
+- domain: gitgarden.marshallku.dev
+  service: gitgarden
+- domain: '*'
+  service: blog-front
+api_port: 1143
+proxy_port: 1144
+health_check:
+  path: /
+  retry_count: 10
+  retry_delay_seconds: 1
