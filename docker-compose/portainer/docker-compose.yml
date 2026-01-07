@@ -1,0 +1,11 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:2.33.6-alpine
+    ports:
+      - 8000:8000
+      - 9443:9443
+      - 9000:9000
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/hdd/data/portainer:/data
