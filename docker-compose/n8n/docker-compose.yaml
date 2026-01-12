@@ -5,13 +5,11 @@ services:
     restart: unless-stopped
     ports:
       - "5678:5678"
+    env_file:
+      - .env
     environment:
       - GENERIC_TIMEZONE=Asia/Seoul
       - TZ=Asia/Seoul
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RUNNERS_ENABLED=true
-      - NODE_TLS_REJECT_UNAUTHORIZED=0
-      - NODE_EXTRA_CA_CERTS=/certs/allCAbundle.pem
     volumes:
       - /mnt/hdd/data/n8n:/home/node/.n8n
       - /Users/Shared/allCAbundle.pem:/certs/allCAbundle.pem:ro
