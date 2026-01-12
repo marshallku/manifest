@@ -13,6 +13,11 @@ services:
     volumes:
       - /mnt/hdd/data/n8n:/home/node/.n8n
       - /Users/Shared/allCAbundle.pem:/certs/allCAbundle.pem:ro
+      - ~/.claude/:/home/node/.claude:ro
+      - ~/.claude.json:/home/node/.claude.json:ro
+      - ~/.ssh/n8n_key:/home/node/.ssh/id_ed25519:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   n8n_data:
