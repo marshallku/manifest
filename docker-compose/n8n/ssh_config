@@ -1,0 +1,7 @@
+Host n8n-host
+    HostName host.docker.internal
+    IdentityFile /home/node/.ssh/id_ed25519
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    LogLevel ERROR
+    RequestTTY no
