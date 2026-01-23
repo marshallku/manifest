@@ -1,0 +1,13 @@
+services:
+    bot:
+        image: ghcr.io/marshallku/zero-ops-bot:latest
+        container_name: zero-ops-bot
+        restart: unless-stopped
+        env_file:
+            - .env
+        healthcheck:
+            test: ["CMD", "pgrep", "-f", "bot"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 10s
