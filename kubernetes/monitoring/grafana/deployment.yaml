@@ -68,6 +68,8 @@ spec:
                         mountPath: /etc/grafana/provisioning/datasources
                       - name: dashboard-provider
                         mountPath: /etc/grafana/provisioning/dashboards
+                      - name: dashboard-containers
+                        mountPath: /var/lib/grafana/dashboards
             volumes:
                 - name: data
                   persistentVolumeClaim:
@@ -78,3 +80,6 @@ spec:
                 - name: dashboard-provider
                   configMap:
                       name: grafana-dashboard-provider
+                - name: dashboard-containers
+                  configMap:
+                      name: grafana-dashboard-containers
