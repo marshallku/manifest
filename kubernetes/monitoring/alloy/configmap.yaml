@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: alloy-config
+    namespace: mgmt01
+    labels:
+        app: alloy
+data:
+    config.alloy: |
+        // Docker container log discovery
+        discovery.docker "containers" {
+          host = "unix:///var/run/docker.sock"
+        }
+
+        discovery.relabel "containers" {
+          targets = discovery.docker.containers.targets
+
+          rule {
+            source_labels = ["__meta_docker_container_name"]
+            regex         = "/(.*)"
+            target_label  = "container"
+          }
+
+          rule {
+            source_labels = ["__meta_docker_container_image"]
+            target_label  = "image"
+          }
+
+          rule {
+            source_labels = ["__meta_docker_network_name"]
+            target_label  = "network"
+          }
+        }
+
+        loki.source.docker "containers" {
+          host       = "unix:///var/run/docker.sock"
+          targets    = discovery.relabel.containers.output
+          forward_to = [loki.process.containers.receiver]
+        }
+
+        loki.process "containers" {
+          stage.docker {}
+
+          stage.labels {
+            values = {
+              container = "",
+              image     = "",
+            }
+          }
+
+          forward_to = [loki.write.default.receiver]
+        }
+
+        // Systemd journal log collection
+        loki.source.journal "systemd" {
+          path        = "/var/log/journal"
+          forward_to  = [loki.process.journal.receiver]
+          labels      = {
+            job = "systemd-journal",
+          }
+        }
+
+        loki.process "journal" {
+          stage.labels {
+            values = {
+              unit = "_SYSTEMD_UNIT",
+            }
+          }
+
+          forward_to = [loki.write.default.receiver]
+        }
+
+        // Ship logs to Loki
+        loki.write "default" {
+          endpoint {
+            url = "http://loki.mgmt01.svc.cluster.local:3100/loki/api/v1/push"
+          }
+        }

@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: cadvisor
+    namespace: mgmt01
+    labels:
+        app: cadvisor
+spec:
+    clusterIP: None
+    selector:
+        app: cadvisor
+    ports:
+        - name: metrics
+          port: 8080
+          targetPort: 8080
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+    name: cadvisor
+    namespace: mgmt01
+    labels:
+        app: cadvisor
+spec:
+    selector:
+        matchLabels:
+            app: cadvisor
+    template:
+        metadata:
+            labels:
+                app: cadvisor
+        spec:
+            tolerations:
+                - operator: Exists
+            containers:
+                - name: cadvisor
+                  image: gcr.io/cadvisor/cadvisor:v0.55.1
+                  ports:
+                      - name: metrics
+                        containerPort: 8080
+                  resources:
+                      requests:
+                          cpu: 100m
+                          memory: 128Mi
+                      limits:
+                          memory: 512Mi
+                  volumeMounts:
+                      - name: rootfs
+                        mountPath: /rootfs
+                        readOnly: true
+                      - name: var-run
+                        mountPath: /var/run
+                      - name: sys
+                        mountPath: /sys
+                        readOnly: true
+                      - name: docker
+                        mountPath: /var/lib/docker
+                        readOnly: true
+            volumes:
+                - name: rootfs
+                  hostPath:
+                      path: /
+                - name: var-run
+                  hostPath:
+                      path: /var/run
+                - name: sys
+                  hostPath:
+                      path: /sys
+                - name: docker
+                  hostPath:
+                      path: /var/lib/docker

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: loki
+    namespace: mgmt01
+    labels:
+        app: loki
+spec:
+    serviceName: loki
+    replicas: 1
+    selector:
+        matchLabels:
+            app: loki
+    template:
+        metadata:
+            labels:
+                app: loki
+        spec:
+            nodeSelector:
+                kubernetes.io/hostname: mgmt01
+            initContainers:
+                - name: init-chown
+                  image: busybox:1.37
+                  command: ["sh", "-c", "chown -R 10001:10001 /loki"]
+                  volumeMounts:
+                      - name: data
+                        mountPath: /loki
+            containers:
+                - name: loki
+                  image: grafana/loki:3.6.5
+                  args:
+                      - -config.file=/etc/loki/loki-config.yaml
+                  ports:
+                      - name: http
+                        containerPort: 3100
+                      - name: grpc
+                        containerPort: 9096
+                  readinessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 3100
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                  livenessProbe:
+                      httpGet:
+                          path: /ready
+                          port: 3100
+                      initialDelaySeconds: 30
+                      periodSeconds: 15
+                  resources:
+                      requests:
+                          cpu: 100m
+                          memory: 256Mi
+                      limits:
+                          memory: 512Mi
+                  volumeMounts:
+                      - name: config
+                        mountPath: /etc/loki
+                      - name: data
+                        mountPath: /loki
+            volumes:
+                - name: config
+                  configMap:
+                      name: loki-config
+                - name: data
+                  persistentVolumeClaim:
+                      claimName: loki-data

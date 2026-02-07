@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: grafana
+    namespace: mgmt01
+    labels:
+        app: grafana
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: grafana
+    template:
+        metadata:
+            labels:
+                app: grafana
+        spec:
+            nodeSelector:
+                kubernetes.io/hostname: mgmt01
+            securityContext:
+                fsGroup: 472
+                runAsUser: 472
+            initContainers:
+                - name: init-chown
+                  image: busybox:1.37
+                  command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
+                  securityContext:
+                      runAsUser: 0
+                  volumeMounts:
+                      - name: data
+                        mountPath: /var/lib/grafana
+            containers:
+                - name: grafana
+                  image: grafana/grafana:12.3.2
+                  ports:
+                      - name: http
+                        containerPort: 3000
+                  env:
+                      - name: GF_SECURITY_ADMIN_USER
+                        value: admin
+                      - name: GF_SECURITY_ADMIN_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: grafana-credentials
+                                key: admin-password
+                  readinessProbe:
+                      httpGet:
+                          path: /api/health
+                          port: 3000
+                      initialDelaySeconds: 10
+                      periodSeconds: 10
+                  livenessProbe:
+                      httpGet:
+                          path: /api/health
+                          port: 3000
+                      initialDelaySeconds: 15
+                      periodSeconds: 15
+                  resources:
+                      requests:
+                          cpu: 100m
+                          memory: 128Mi
+                      limits:
+                          memory: 512Mi
+                  volumeMounts:
+                      - name: data
+                        mountPath: /var/lib/grafana
+                      - name: datasources
+                        mountPath: /etc/grafana/provisioning/datasources
+                      - name: dashboard-provider
+                        mountPath: /etc/grafana/provisioning/dashboards
+            volumes:
+                - name: data
+                  persistentVolumeClaim:
+                      claimName: grafana-data
+                - name: datasources
+                  configMap:
+                      name: grafana-datasources
+                - name: dashboard-provider
+                  configMap:
+                      name: grafana-dashboard-provider

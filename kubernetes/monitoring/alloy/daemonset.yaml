@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+    name: alloy
+    namespace: mgmt01
+    labels:
+        app: alloy
+spec:
+    selector:
+        matchLabels:
+            app: alloy
+    template:
+        metadata:
+            labels:
+                app: alloy
+        spec:
+            tolerations:
+                - operator: Exists
+            containers:
+                - name: alloy
+                  image: grafana/alloy:v1.13.0
+                  args:
+                      - run
+                      - /etc/alloy/config.alloy
+                      - --storage.path=/tmp/alloy
+                  ports:
+                      - name: http
+                        containerPort: 12345
+                  resources:
+                      requests:
+                          cpu: 50m
+                          memory: 64Mi
+                      limits:
+                          memory: 256Mi
+                  volumeMounts:
+                      - name: config
+                        mountPath: /etc/alloy
+                      - name: docker-sock
+                        mountPath: /var/run/docker.sock
+                        readOnly: true
+                      - name: journal
+                        mountPath: /var/log/journal
+                        readOnly: true
+                      - name: machine-id
+                        mountPath: /etc/machine-id
+                        readOnly: true
+            volumes:
+                - name: config
+                  configMap:
+                      name: alloy-config
+                - name: docker-sock
+                  hostPath:
+                      path: /var/run/docker.sock
+                - name: journal
+                  hostPath:
+                      path: /var/log/journal
+                - name: machine-id
+                  hostPath:
+                      path: /etc/machine-id

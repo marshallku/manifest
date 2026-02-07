@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: prometheus-config
+    namespace: mgmt01
+    labels:
+        app: prometheus
+data:
+    prometheus.yml: |
+        global:
+          scrape_interval: 15s
+          evaluation_interval: 15s
+
+        scrape_configs:
+          - job_name: prometheus
+            static_configs:
+              - targets:
+                  - localhost:9090
+
+          - job_name: node-exporter
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                    - mgmt01
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app]
+                regex: node-exporter
+                action: keep
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                target_label: node
+              - source_labels: [__meta_kubernetes_pod_ip]
+                regex: (.+)
+                target_label: __address__
+                replacement: $1:9100
+
+          - job_name: cadvisor
+            kubernetes_sd_configs:
+              - role: pod
+                namespaces:
+                  names:
+                    - mgmt01
+            relabel_configs:
+              - source_labels: [__meta_kubernetes_pod_label_app]
+                regex: cadvisor
+                action: keep
+              - source_labels: [__meta_kubernetes_pod_node_name]
+                target_label: node
+              - source_labels: [__meta_kubernetes_pod_ip]
+                regex: (.+)
+                target_label: __address__
+                replacement: $1:8080
+            metric_relabel_configs:
+              - source_labels: [container]
+                regex: ""
+                action: drop
+
+          - job_name: loki
+            static_configs:
+              - targets:
+                  - loki:3100
