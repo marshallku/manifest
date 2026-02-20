@@ -26,5 +26,6 @@ services:
             - db
         volumes:
             - /mnt/hdd/data/nextcloud/app:/var/www/html
+            - /mnt/hdd/data/cloud/app/data:/tmp/old:ro
         env_file:
             - .env

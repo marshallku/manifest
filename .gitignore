@@ -1,2 +1,4 @@
 .env
 **/secret.yaml
+
+.claude/settings.local.json
