@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: maji-frontend
+  namespace: maji
+  labels:
+    app: maji-frontend
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30500
+  selector:
+    app: maji-frontend
