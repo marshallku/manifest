@@ -6,4 +6,11 @@ metadata:
     app.kubernetes.io/part-of: argocd
   name: argocd-rbac-cm
   namespace: argocd
-data: {}
+data:
+  policy.csv: |
+    p, sssup, applications, get, miniapp/*, allow
+    p, sssup, applications, sync, miniapp/*, allow
+    p, sssup, applications, action/*, miniapp/*, allow
+    p, sssup, applications, override, miniapp/*, allow
+    p, sssup, logs, get, miniapp/*, allow
+    g, sssup, role:miniapp-user

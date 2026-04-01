@@ -95,6 +95,7 @@ data:
       - BackgroundScanReport
       - ClusterBackgroundScanReport
       - UpdateRequest
+  accounts.sssup: apiKey, login
 kind: ConfigMap
 metadata:
   labels:
