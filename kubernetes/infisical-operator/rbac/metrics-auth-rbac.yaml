@@ -1,0 +1,45 @@
+---
+# Source: secrets-operator/templates/metrics-auth-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infisical-secre-metrics-auth-role
+  labels:
+    helm.sh/chart: secrets-operator-v0.10.33
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+    app.kubernetes.io/version: "v0.10.33"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+# Source: secrets-operator/templates/metrics-auth-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infisical-secre-metrics-auth-rolebinding
+  labels:
+    helm.sh/chart: secrets-operator-v0.10.33
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+    app.kubernetes.io/version: "v0.10.33"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: 'infisical-secre-metrics-auth-role'
+subjects:
+- kind: ServiceAccount
+  name: 'infisical-secre-controller-manager'
+  namespace: 'infisical-operator'

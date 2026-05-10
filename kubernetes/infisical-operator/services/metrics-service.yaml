@@ -1,0 +1,25 @@
+---
+# Source: secrets-operator/templates/metrics-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: infisical-secre-controller-manager-metrics-service
+  namespace: infisical-operator
+  labels:
+    control-plane: controller-manager
+    helm.sh/chart: secrets-operator-v0.10.33
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+    app.kubernetes.io/version: "v0.10.33"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    control-plane: controller-manager
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443

@@ -1,0 +1,118 @@
+---
+# Source: secrets-operator/templates/manager-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: infisical-secre-manager-role
+  namespace: "maji-dev"
+  labels:
+    helm.sh/chart: secrets-operator-v0.10.33
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+    app.kubernetes.io/version: "v0.10.33"
+    app.kubernetes.io/managed-by: Helm
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts/token
+  verbs:
+  - create
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  - deployments
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - secrets.infisical.com
+  resources:
+  - clustergenerators
+  - infisicaldynamicsecrets
+  - infisicalpushsecrets
+  - infisicalsecrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - secrets.infisical.com
+  resources:
+  - infisicaldynamicsecrets/finalizers
+  - infisicalpushsecrets/finalizers
+  - infisicalsecrets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - secrets.infisical.com
+  resources:
+  - infisicaldynamicsecrets/status
+  - infisicalpushsecrets/status
+  - infisicalsecrets/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+# Source: secrets-operator/templates/manager-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: infisical-secre-manager-rolebinding
+  namespace: "maji-dev"
+  labels:
+    helm.sh/chart: secrets-operator-v0.10.33
+    app.kubernetes.io/name: secrets-operator
+    app.kubernetes.io/instance: infisical-secrets-operator
+    app.kubernetes.io/version: "v0.10.33"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: infisical-secre-manager-role
+subjects:
+- kind: ServiceAccount
+  name: infisical-secre-controller-manager
+  namespace: infisical-operator
