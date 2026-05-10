@@ -1,0 +1,15 @@
+services:
+  postgres-dev:
+    image: postgres:18.3-alpine3.23
+    container_name: postgres-dev
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - PGDATA=/var/lib/postgresql/18/docker
+    volumes:
+      - ~/data/postgres-dev:/var/lib/postgresql/18/docker
+      - /mnt/hdd/backup/postgres-dev:/backup
