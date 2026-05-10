@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infisical
+  namespace: infisical
+  labels:
+    app.kubernetes.io/name: infisical
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/part-of: infisical
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: infisical
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: infisical
+        app.kubernetes.io/component: backend
+        app.kubernetes.io/part-of: infisical
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/hostname: mgmt01
+      containers:
+        - name: infisical
+          image: infisical/infisical:v0.159.25
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: infisical-config
+            - secretRef:
+                name: infisical-secret
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
