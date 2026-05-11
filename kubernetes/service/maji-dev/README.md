@@ -6,7 +6,7 @@ Development environment for [`maji`](../maji/), running parallel on the same clu
 - **Domain** — `dev.maji.you` / `dev-api.maji.you` (vs `maji.you` / `api.maji.you`)
 - **NodePorts** — frontend `30502`, api `30503` (vs `30500` / `30501`)
 - **DB** — `postgres-dev` on db01 port 5433 (separate container, separate volume)
-- **R2 bucket** — `maji-dev-staging` served via `c1-dev.maji.you`
+- **R2 bucket** — `maji-dev` (prod uses `maji-prod` after the bucket rename), served via `c1-dev.maji.you`
 - **Secret backend** — Infisical (vs sealed-secret in prod)
 
 Same node placement (`dev01`), same image registry. OAuth apps are **separate** (dev-only Kakao/Google clients) so dev tokens never authenticate against prod.
@@ -33,12 +33,12 @@ Prerequisites:
 - Infisical Operator installed (`kubernetes/infisical-operator/`).
 - ArgoCD running with the `miniapp` AppProject (same as prod).
 
-### 1. Create the dev R2 bucket
+### 1. Prepare the dev R2 bucket
 
 In Cloudflare R2 console:
 
-- Bucket name: `maji-dev-staging`
-- Public access: enable, custom domain `c1-dev.maji.you`
+- Use the `maji-dev` bucket (originally held prod data; data was migrated to `maji-prod` and this bucket emptied for reuse).
+- Public access: enable, custom domain `c1-dev.maji.you`.
 - Generate a new API token scoped to this bucket only — keep `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` for step 3.
 
 ### 2. Stand up postgres-dev on db01
