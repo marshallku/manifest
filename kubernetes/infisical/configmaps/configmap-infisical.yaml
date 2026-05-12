@@ -7,7 +7,7 @@ metadata:
     app.kubernetes.io/name: infisical
     app.kubernetes.io/part-of: infisical
 data:
-  SITE_URL: "https://infisical.example.com"
+  SITE_URL: "http://infisical.marshallku.com:30200"
   REDIS_URL: "redis://infisical-redis.infisical.svc.cluster.local:6379"
   HOST: "0.0.0.0"
   PORT: "8080"

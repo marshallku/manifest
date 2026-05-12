@@ -8,10 +8,11 @@ metadata:
     app.kubernetes.io/component: backend
     app.kubernetes.io/part-of: infisical
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
     - name: http
       port: 8080
       targetPort: http
+      nodePort: 30200
   selector:
     app.kubernetes.io/name: infisical
