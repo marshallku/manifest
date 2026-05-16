@@ -13,6 +13,6 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
     volumes:
-      - ~/data/influxdb/data:/var/lib/influxdb2
-      - ~/data/influxdb/config:/etc/influxdb2
+      - /mnt/hdd/data/influxdb/data:/var/lib/influxdb2
+      - /mnt/hdd/data/influxdb/config:/etc/influxdb2
       - /mnt/hdd/backup/influxdb:/backup
