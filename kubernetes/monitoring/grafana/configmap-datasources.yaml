@@ -21,3 +21,17 @@ data:
             access: proxy
             url: http://loki:3100
             editable: false
+
+          - name: InfluxDB
+            uid: influxdb-home
+            type: influxdb
+            access: proxy
+            url: http://192.168.219.130:8086
+            jsonData:
+              version: Flux
+              organization: marshall
+              defaultBucket: home
+              tlsSkipVerify: true
+            secureJsonData:
+              token: $INFLUXDB_TOKEN
+            editable: false
