@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: irang-api
+  namespace: irang-dev
+  labels:
+    app: irang-api
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      # NodePort allocation: maji prd 30500/30501, maji dev 30502/30503,
+      # irang prd 30504 (api) / 30505 (admin-web). Keep contiguous so the
+      # next product/env picks up at 30506.
+      nodePort: 30506
+  selector:
+    app: irang-api

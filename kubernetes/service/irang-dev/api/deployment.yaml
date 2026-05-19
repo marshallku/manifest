@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: irang-api
+  namespace: irang-dev
+  labels:
+    app: irang-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: irang-api
+  template:
+    metadata:
+      labels:
+        app: irang-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      nodeSelector:
+        kubernetes.io/hostname: dev01
+      containers:
+        - name: api
+          image: ghcr.io/80rian/irang-api:dev-placeholder
+          ports:
+            - containerPort: 8080
+          env:
+            # IRANG_PORT — Go server listens here. Matches Service targetPort.
+            - name: IRANG_PORT
+              value: "8080"
+            # Shared with maji prd (single Postgres + schema separation per
+            # ADR-0012). Connection string identical to maji-secret.DATABASE_URL.
+            # First boot creates the `irang` schema via renameLegacyShopSchema +
+            # CREATE SCHEMA IF NOT EXISTS and applies 0001..0004 migrations.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: DATABASE_URL
+            # Same secret as maji prd so admin clients can paste a maji-issued
+            # JWT into the irang admin UI (interim auth — replaced by RS256 via
+            # services/auth once that ships).
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: JWT_SECRET
+            - name: IRANG_BASE_URL
+              value: https://api.dev.irang.me
+            - name: IRANG_CORS_ORIGINS
+              value: https://admin.dev.irang.me
+            - name: IRANG_MIGRATIONS_DIR
+              value: /migrations
+            # Comma-separated email allowlist gating /api/admin/*. Editors only.
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: ADMIN_EMAILS
+            # R2 — bucket exists from day 1 even though Phase 1 doesn't write
+            # to it yet (image uploads land in a later track). Wiring is in
+            # place so the first upload PR doesn't need to touch this manifest.
+            - name: S3_ENDPOINT
+              value: https://12b800546f9b38de89d1585e397b611f.r2.cloudflarestorage.com
+            - name: S3_REGION
+              value: auto
+            - name: S3_BUCKET
+              value: irang-dev
+            - name: S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: S3_ACCESS_KEY_ID
+            - name: S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: S3_SECRET_ACCESS_KEY
+            - name: S3_PUBLIC_URL
+              value: https://c1.dev.irang.me
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
