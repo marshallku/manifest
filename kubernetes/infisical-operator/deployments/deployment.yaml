@@ -33,7 +33,7 @@ spec:
         - --metrics-bind-address=:8443
         - --leader-elect
         - --health-probe-bind-address=:8081
-        - --namespaces=maji-dev
+        - --namespaces=maji-dev,irang-dev
         command:
         - /manager
         env:
