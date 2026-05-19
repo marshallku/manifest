@@ -1,6 +1,6 @@
 # cloudflared-sssup
 
-Second cloudflared instance dedicated to the **maji.you** Cloudflare account. The original [`cloudflared/`](../cloudflared/) deployment serves the `marshallku.dev` account; tunnels are account-scoped so a separate pod with its own token is needed for any other account's zones.
+Second cloudflared instance dedicated to the **sssup** Cloudflare account, which holds the `maji.you` and `irang.me` zones (and any future sssup-related zones). The original [`cloudflared/`](../cloudflared/) deployment serves the `marshallku.dev` account; tunnels are account-scoped so a separate pod with its own token is needed for any other account's zones, but one cloudflared instance can handle every zone on the same account.
 
 Pinned to `mgmt01`. Public hostnames (ingress rules) are managed in the Cloudflare Zero Trust dashboard, not in this manifest — the deployment runs in token-based "remotely managed" mode.
 
@@ -65,8 +65,10 @@ Back in the tunnel's **Public Hostnames** tab, add:
 | --- | --- | --- | --- |
 | `dev` | `maji.you` | HTTP | `maji-frontend.maji-dev.svc.cluster.local:3000` |
 | `dev-api` | `maji.you` | HTTP | `maji-api.maji-dev.svc.cluster.local:8080` |
+| `api` | `irang.me` | HTTP | `irang-api.irang.svc.cluster.local:8080` |
+| `admin` | `irang.me` | HTTP | `irang-admin-web.irang.svc.cluster.local:3000` |
 
-CF auto-creates the orange-cloud DNS records.
+CF auto-creates the orange-cloud DNS records. `c1.irang.me` is added separately as an R2 custom domain (R2 bucket page, not the tunnel).
 
 ### 5. Verify
 
