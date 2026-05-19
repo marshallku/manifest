@@ -3,10 +3,10 @@
 Development environment for [`irang`](../irang/). Differs from prd only in:
 
 - **Namespace** — `irang-dev`
-- **Domain** — `api.dev.irang.me` / `admin.dev.irang.me`
+- **Domain** — `api-dev.irang.me` / `admin-dev.irang.me`
 - **NodePorts** — `30506` (api), `30507` (admin-web)
 - **DB** — `postgres-dev` on db01 port `5443`, database `sssup_dev` (same instance as `maji-dev` / postgres-dev shares the cluster)
-- **R2 bucket** — `irang-dev` (separate from `irang-prod`), served via `c1.dev.irang.me`
+- **R2 bucket** — `irang-dev` (separate from `irang-prod`), served via `c1-dev.irang.me`
 - **Image tag** — `:dev-placeholder` → CI rewrites to `:<sha>` on push to `develop` branch (see `.github/workflows/deploy-irang-dev.yml` in the sssup repo)
 - **Infisical project** — `irang-dev` (env slug `dev`), separate from `irang-prd`
 - **OAuth / wrapper / tokens** — none (admin-only, no user-facing OAuth)
@@ -23,13 +23,13 @@ Add in the `sssup` tunnel's **Public Hostnames** tab:
 
 | Subdomain | Domain | Type | URL |
 | --- | --- | --- | --- |
-| `api.dev` | `irang.me` | HTTP | `irang-api.irang-dev.svc.cluster.local:8080` |
-| `admin.dev` | `irang.me` | HTTP | `irang-admin-web.irang-dev.svc.cluster.local:3000` |
-| `c1.dev` | `irang.me` | (origin) | R2 custom domain (set on the bucket page) |
+| `api-dev` | `irang.me` | HTTP | `irang-api.irang-dev.svc.cluster.local:8080` |
+| `admin-dev` | `irang.me` | HTTP | `irang-admin-web.irang-dev.svc.cluster.local:3000` |
+| `c1-dev` | `irang.me` | (origin) | R2 custom domain (set on the bucket page) |
 
 ### 2. R2 bucket
 
-Create `irang-dev` bucket (separate from `irang-prod`) + custom domain `c1.dev.irang.me`. R2 token can be scoped to the dev bucket only.
+Create `irang-dev` bucket (separate from `irang-prod`) + custom domain `c1-dev.irang.me`. R2 token can be scoped to the dev bucket only.
 
 ### 3. DB (already done)
 
@@ -68,7 +68,7 @@ Three apps named `irang-api-dev`, `irang-admin-web-dev`, `irang-secret-dev` — 
 ```sh
 kubectl -n irang-dev rollout status deploy/irang-api
 kubectl -n irang-dev rollout status deploy/irang-admin-web
-curl -sS https://api.dev.irang.me/api/health
+curl -sS https://api-dev.irang.me/api/health
 ```
 
-`https://admin.dev.irang.me` should render the admin UI; paste a `maji-dev` JWT to authenticate.
+`https://admin-dev.irang.me` should render the admin UI; paste a `maji-dev` JWT to authenticate.

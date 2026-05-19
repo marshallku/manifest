@@ -46,9 +46,9 @@ spec:
                   name: irang-secret
                   key: JWT_SECRET
             - name: IRANG_BASE_URL
-              value: https://api.dev.irang.me
+              value: https://api-dev.irang.me
             - name: IRANG_CORS_ORIGINS
-              value: https://admin.dev.irang.me
+              value: https://admin-dev.irang.me
             - name: IRANG_MIGRATIONS_DIR
               value: /migrations
             # Comma-separated email allowlist gating /api/admin/*. Editors only.
@@ -77,7 +77,7 @@ spec:
                   name: irang-secret
                   key: S3_SECRET_ACCESS_KEY
             - name: S3_PUBLIC_URL
-              value: https://c1.dev.irang.me
+              value: https://c1-dev.irang.me
           resources:
             requests:
               cpu: 50m
