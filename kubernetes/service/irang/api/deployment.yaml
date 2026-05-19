@@ -37,9 +37,8 @@ spec:
                 secretKeyRef:
                   name: irang-secret
                   key: DATABASE_URL
-            # Same secret as maji prd so admin clients can paste a maji-issued
-            # JWT into the irang admin UI (interim auth — replaced by RS256 via
-            # services/auth once that ships).
+            # Signs irang admin session JWTs (typ=admin). Independent of any
+            # future user-facing token once services/auth ships.
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -47,16 +46,16 @@ spec:
                   key: JWT_SECRET
             - name: IRANG_BASE_URL
               value: https://api.irang.me
+            - name: IRANG_ADMIN_WEB_URL
+              value: https://admin.irang.me
             - name: IRANG_CORS_ORIGINS
               value: https://admin.irang.me
             - name: IRANG_MIGRATIONS_DIR
               value: /migrations
-            # Comma-separated email allowlist gating /api/admin/*. Editors only.
-            - name: ADMIN_EMAILS
-              valueFrom:
-                secretKeyRef:
-                  name: irang-secret
-                  key: ADMIN_EMAILS
+            # Behind cloudflared (TLS terminated upstream). Session cookie is
+            # Secure-only since the public origin is https.
+            - name: IRANG_COOKIE_SECURE
+              value: "true"
             # R2 — bucket exists from day 1 even though Phase 1 doesn't write
             # to it yet (image uploads land in a later track). Wiring is in
             # place so the first upload PR doesn't need to touch this manifest.

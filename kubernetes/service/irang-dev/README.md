@@ -49,11 +49,12 @@ postgres://maji:<password>@192.168.219.130:5443/sssup_dev?sslmode=disable
 - Env slug `dev`
 - Keys at path `/`:
   - `DATABASE_URL` (above)
-  - `JWT_SECRET` — generate fresh OR reuse maji-dev's (matters for the JWT paste flow into the admin)
-  - `ADMIN_EMAILS` — comma-separated
+  - `JWT_SECRET` — fresh random; only used to sign irang admin sessions (cookie `irang_admin_session`)
   - `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` — `irang-dev` R2 token, or `placeholder` for now
 - Identity `irang-dev-operator` with Universal Auth → clientId/clientSecret
 - Project Access Control → add operator with `Viewer` role
+
+Admin accounts live in the DB (`irang.admin_users`), not in Infisical. Seed the first one with `admin-seed` (see §8).
 
 ### 5. ArgoCD Applications
 
@@ -71,4 +72,16 @@ kubectl -n irang-dev rollout status deploy/irang-admin-web
 curl -sS https://api-dev.irang.me/api/health
 ```
 
-`https://admin-dev.irang.me` should render the admin UI; paste a `maji-dev` JWT to authenticate.
+`https://admin-dev.irang.me` should redirect to `/login`. Login requires a row in `irang.admin_users` — seed it first (§8).
+
+### 8. Seed the first admin
+
+The admin auth flow is invite-gated, so the first row has to be inserted directly. The image ships an `/irang-admin-seed` binary alongside the server:
+
+```sh
+kubectl -n irang-dev exec -it deploy/irang-api -- \
+  /irang-admin-seed --email me@example.com --role admin
+# Password is prompted twice on the TTY (no echo).
+```
+
+After that, sign in at `https://admin-dev.irang.me/login`. From there, generate invites for other admins/editors via the **사용자 → 초대 관리** page. Each invite is single-use, email-locked, and expires within 30 days.
