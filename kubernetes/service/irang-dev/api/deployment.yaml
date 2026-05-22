@@ -77,6 +77,21 @@ spec:
                   key: S3_SECRET_ACCESS_KEY
             - name: S3_PUBLIC_URL
               value: https://c1-dev.irang.me
+            # Naver Shopping Search API — #25 admin 상품 리서치 도구. When
+            # either is absent, /api/admin/research/naver is not mounted
+            # (main.go gates the route + handler returns 503 as defense-in-
+            # depth). Phase 1 manual aggregator path; Phase 2 will add the
+            # background scheduler + raw_listings cache.
+            - name: NAVER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: NAVER_CLIENT_ID
+            - name: NAVER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: NAVER_CLIENT_SECRET
           resources:
             requests:
               cpu: 50m
