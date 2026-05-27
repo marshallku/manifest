@@ -19,6 +19,51 @@ spec:
         - name: ghcr-secret
       nodeSelector:
         kubernetes.io/hostname: dev01
+      # Native sidecar pattern (k8s 1.29+). kagi-serve is declared as an
+      # initContainer with restartPolicy: Always so k8s starts it BEFORE
+      # the api container and keeps it running. Without this, api boots
+      # first, the /healthz probe fails (kagi not yet bound to 8921), and
+      # the AI panel goes 503 for the lifetime of the pod.
+      initContainers:
+        - name: kagi-serve
+          image: ghcr.io/marshallku/kagi:latest
+          imagePullPolicy: Always
+          restartPolicy: Always
+          args:
+            - "serve"
+            - "-addr"
+            - "0.0.0.0:8921"
+          ports:
+            - containerPort: 8921
+          env:
+            - name: KAGI_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_EMAIL
+            - name: KAGI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 15
+            periodSeconds: 30
       containers:
         - name: api
           image: ghcr.io/80rian/irang-api:d4ec6a3c6774d9a93b848bfadc0f8e4910b3230d
@@ -123,48 +168,3 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
-        # ===========================================================
-        # kagi-serve sidecar — wraps Kagi Assistant cookie auth + HTTP.
-        # irang-api hits this over loopback at 127.0.0.1:8921. The pod
-        # restart cycle re-auths via KAGI_EMAIL + KAGI_PASSWORD because
-        # the container has no keyring (Alpine, no libsecret) and the
-        # session is in-memory only. That's fine at Phase 1 traffic.
-        # ===========================================================
-        - name: kagi-serve
-          image: ghcr.io/marshallku/kagi:latest
-          imagePullPolicy: Always
-          args:
-            - "serve"
-            - "-addr"
-            - "0.0.0.0:8921"
-          ports:
-            - containerPort: 8921
-          env:
-            - name: KAGI_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: irang-secret
-                  key: KAGI_EMAIL
-            - name: KAGI_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: irang-secret
-                  key: KAGI_PASSWORD
-          resources:
-            requests:
-              cpu: 20m
-              memory: 32Mi
-            limits:
-              memory: 128Mi
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 8921
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8921
-            initialDelaySeconds: 15
-            periodSeconds: 30
