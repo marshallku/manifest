@@ -19,6 +19,49 @@ spec:
         - name: ghcr-secret
       nodeSelector:
         kubernetes.io/hostname: dev01
+      # Native sidecar pattern (k8s 1.29+). kagi-serve is declared as an
+      # initContainer with restartPolicy: Always so k8s starts it BEFORE
+      # the api container and keeps it running. Mirrors irang-dev wiring.
+      initContainers:
+        - name: kagi-serve
+          image: ghcr.io/marshallku/kagi:latest
+          imagePullPolicy: Always
+          restartPolicy: Always
+          args:
+            - "serve"
+            - "-addr"
+            - "0.0.0.0:8921"
+          ports:
+            - containerPort: 8921
+          env:
+            - name: KAGI_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_EMAIL
+            - name: KAGI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 15
+            periodSeconds: 30
       containers:
         - name: api
           image: ghcr.io/80rian/irang-api:ea95d8a1af59fdcbdd89acffd3eb67fe007de405
@@ -77,6 +120,18 @@ spec:
                   key: S3_SECRET_ACCESS_KEY
             - name: S3_PUBLIC_URL
               value: https://c1.irang.me
+            # AI authoring (#24) — kagi-serve sidecar in the same pod hosts
+            # the /chat HTTP surface on localhost:8921. irang-api boots,
+            # probes kagi /healthz, and syncs docs/prompts/*.md to kagi's
+            # /assistants. Auth secrets live on the kagi-serve container.
+            - name: AI_PROVIDER
+              value: kagi
+            - name: KAGI_BASE_URL
+              value: http://127.0.0.1:8921
+            - name: KAGI_MODEL
+              value: claude-4-sonnet
+            - name: PROMPTS_DIR
+              value: /docs/prompts
           resources:
             requests:
               cpu: 50m
