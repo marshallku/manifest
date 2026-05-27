@@ -21,7 +21,7 @@ spec:
         kubernetes.io/hostname: dev01
       containers:
         - name: api
-          image: ghcr.io/80rian/irang-api:61bc67a9823c407fe77002f2a8079e5f38b67126
+          image: ghcr.io/80rian/irang-api:d4ec6a3c6774d9a93b848bfadc0f8e4910b3230d
           ports:
             - containerPort: 8080
           env:
