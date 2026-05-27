@@ -92,6 +92,19 @@ spec:
                 secretKeyRef:
                   name: irang-secret
                   key: NAVER_CLIENT_SECRET
+            # AI authoring (#24) — kagi-serve sidecar in the same pod hosts
+            # the /chat HTTP surface on localhost:8921. irang-api boots,
+            # probes kagi /healthz, and syncs docs/prompts/*.md to kagi's
+            # /assistants (POST or PATCH per drift). Auth secrets are on
+            # the kagi-serve container, not here.
+            - name: AI_PROVIDER
+              value: kagi
+            - name: KAGI_BASE_URL
+              value: http://127.0.0.1:8921
+            - name: KAGI_MODEL
+              value: claude-4-sonnet
+            - name: PROMPTS_DIR
+              value: /docs/prompts
           resources:
             requests:
               cpu: 50m
@@ -110,3 +123,48 @@ spec:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
+        # ===========================================================
+        # kagi-serve sidecar — wraps Kagi Assistant cookie auth + HTTP.
+        # irang-api hits this over loopback at 127.0.0.1:8921. The pod
+        # restart cycle re-auths via KAGI_EMAIL + KAGI_PASSWORD because
+        # the container has no keyring (Alpine, no libsecret) and the
+        # session is in-memory only. That's fine at Phase 1 traffic.
+        # ===========================================================
+        - name: kagi-serve
+          image: ghcr.io/marshallku/kagi:latest
+          imagePullPolicy: Always
+          args:
+            - "serve"
+            - "-addr"
+            - "0.0.0.0:8921"
+          ports:
+            - containerPort: 8921
+          env:
+            - name: KAGI_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_EMAIL
+            - name: KAGI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 15
+            periodSeconds: 30
