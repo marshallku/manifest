@@ -1,0 +1,24 @@
+# Stable NodePort for the prd01 host nginx to reach argocd-server.
+# argocd-server runs with server.insecure=true, so this serves plain HTTP on 8080;
+# TLS terminates at the prd01 nginx (*.marshallku.dev wildcard), which restricts
+# access to the tailnet (allow 100.64.0.0/10). Kept separate from the upstream
+# argocd-server ClusterIP Service so re-rendering ArgoCD does not clobber it.
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+  name: argocd-server-nodeport
+  namespace: argocd
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+      nodePort: 30207
+  selector:
+    app.kubernetes.io/name: argocd-server
