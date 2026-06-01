@@ -1,15 +1,16 @@
 # irang (prd)
 
 Production deployment for **irang** — the 영유아 큐레이션 + 가격비교 슈퍼앱
-([`sssup`](https://github.com/80rian/sssup) repo). Phase 1 ships two surfaces:
+([`sssup`](https://github.com/80rian/sssup) repo). Surfaces:
 
 - **irang-api** — Go / chi / pgx, single binary (`apps/irang/api`). Exposes
   `/api/admin/*` behind an irang admin session (cookie `irang_admin_session`,
-  JWT `typ=admin`). Accounts live in `irang.admin_users`; signup is invite-only.
+  JWT `typ=admin`) and the unauthenticated, published-only `/api/articles*`
+  public read API. Accounts live in `irang.admin_users`; signup is invite-only.
 - **irang-admin-web** — Next.js 16 admin console (`apps/admin/web`).
   Email + password login at `/login`; signup via invite link at `/signup?token=…`.
-
-No user-facing frontend yet — Phase 1 is editorial tooling only.
+- **irang-web** — Next.js 16 public reading surface (`apps/irang/web`), served
+  at the root `irang.me`. SSR; renders published articles via the public API.
 
 ## Differences from `maji/`
 
@@ -20,9 +21,10 @@ No user-facing frontend yet — Phase 1 is editorial tooling only.
 | User domain | `maji.you` | `irang.me` (same Cloudflare account as maji.you) |
 | API domain | `api.maji.you` | `api.irang.me` |
 | Admin domain | — | `admin.irang.me` |
+| Web domain | `maji.you` | `irang.me` (root) |
 | R2 bucket | `maji-prod` | `irang-prod` |
 | R2 public | `c1.maji.you` | `c1.irang.me` |
-| NodePorts | 30500 frontend, 30501 api | 30504 api, 30505 admin |
+| NodePorts | 30500 frontend, 30501 api | 30504 api, 30505 admin, 30508 web |
 | Postgres | db01 (`maji` database) | **same** db01 + `maji` database + `irang` schema (ADR-0012) |
 | JWT_SECRET | own | **shared with maji prd** so admin can paste a maji JWT |
 | Cloudflared | `cloudflared-sssup` (shared, same account) | **reuses** `cloudflared-sssup` — just add hostnames in the dashboard |
@@ -36,6 +38,7 @@ irang/
 ├── namespace.yaml
 ├── api/{deployment,service}.yaml
 ├── admin/{deployment,service}.yaml
+├── web/{deployment,service}.yaml            # public reading surface (irang.me)
 ├── infisical-secret.yaml                    # InfisicalSecret CR (commit)
 ├── infisical-credentials.yaml.example       # template for universal-auth bootstrap
 └── sealed-ghcr-secret.yaml.example          # template (run kubeseal to generate the real file)
@@ -70,12 +73,13 @@ tunnel and add to **Public Hostnames**:
 
 | Subdomain | Domain | Type | URL |
 | --- | --- | --- | --- |
+| _(root)_ | `irang.me` | HTTP | `irang-web.irang.svc.cluster.local:3000` |
 | `api` | `irang.me` | HTTP | `irang-api.irang.svc.cluster.local:8080` |
 | `admin` | `irang.me` | HTTP | `irang-admin-web.irang.svc.cluster.local:3000` |
 | `c1` | `irang.me` | (origin) | R2 custom domain — set in the R2 bucket page, not the tunnel |
 
-The root `irang.me` is intentionally left unmapped — there's no user-facing
-frontend yet. Point at a holding page (Cloudflare Pages) when needed.
+The root `irang.me` maps to **irang-web** (public reading surface). Leave the
+Subdomain field blank (apex) in the Public Hostnames form.
 
 If the `irang.me` zone hasn't been added to the account yet, do that first:
 **Account → Add a site → `irang.me`**. Cloudflare auto-creates the orange-
@@ -156,8 +160,9 @@ Generate the sealed ghcr-secret following the comment in
 
 ### 6. Wire up ArgoCD
 
-Three new `Application`s in the `argocd` namespace (same `miniapp` project
-as maji):
+Four `Application`s in the `argocd` namespace (same `miniapp` project as
+maji) — one per component path (non-recursive), so a new surface needs its
+own app:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -197,6 +202,23 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: irang-web
+  namespace: argocd
+spec:
+  project: miniapp
+  source:
+    repoURL: https://github.com/marshallku/manifest.git
+    targetRevision: HEAD
+    path: kubernetes/service/irang/web
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: irang
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: irang-secret
   namespace: argocd
 spec:
@@ -226,7 +248,9 @@ kubectl -n irang get infisicalsecret irang-secret -o yaml | grep -A5 status:   #
 kubectl -n irang get secret irang-secret -o yaml                                # expect populated keys
 kubectl -n irang rollout status deploy/irang-api --timeout=2m
 kubectl -n irang rollout status deploy/irang-admin-web --timeout=2m
+kubectl -n irang rollout status deploy/irang-web --timeout=2m
 curl -s https://api.irang.me/api/health
+curl -sS -o /dev/null -w "%{http_code}\n" https://irang.me            # expect 200 (public reading surface)
 # Open https://admin.irang.me in a browser, paste a maji-prd JWT in the
 # topbar — the admin should resolve /api/admin/whoami with admin=true.
 ```
@@ -234,10 +258,9 @@ curl -s https://api.irang.me/api/health
 ## Day 2
 
 - **Image tag updates** land via CI commits to
-  `kubernetes/service/irang/{api,admin}/deployment.yaml` once
-  `ci-irang-api.yml` and `ci-irang-admin-web.yml` are added to the sssup repo
-  (mirroring `ci-maji-api.yml` / `ci-maji-web.yml`). Both images currently
-  point at `:placeholder` — first CI push will rewrite the tag.
+  `kubernetes/service/irang/{api,admin,web}/deployment.yaml` from
+  `deploy-irang-prd.yml` in the sssup repo (build → GHCR → manifest commit-back).
+  `irang-web` starts at `:prd-placeholder` — the first CI push rewrites the tag.
 - **Secret rotation** happens in the Infisical UI — the operator picks up
   changes within `resyncInterval` (60s) and patches the managed `irang-secret`.
   No pod restart needed for Go env vars that come from the secret since
@@ -273,7 +296,6 @@ Operators don't need to enforce these manually — they hold under any client.
   in the sssup repo — build + push to GHCR + commit the new tag back here.
 - `services/auth` extraction and the RS256 cutover — removes the JWT_SECRET
   sharing between maji and irang.
-- User-facing `irang.me` frontend (Phase 2+).
 - IP allowlist on `admin.irang.me` via Cloudflare Access (currently only
   email-allowlist on the API; the admin UI itself is unauthenticated until
   the editor pastes a token).

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: irang-web
+  namespace: irang-dev
+  labels:
+    app: irang-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: irang-web
+  template:
+    metadata:
+      labels:
+        app: irang-web
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      nodeSelector:
+        kubernetes.io/hostname: dev01
+      containers:
+        - name: web
+          # CI (deploy-irang-dev.yml) rewrites this tag to :<sha> on push to develop.
+          image: ghcr.io/80rian/irang-web:dev-placeholder
+          ports:
+            - containerPort: 3000
+          env:
+            # Next.js standalone server listens on 3000 in prod (next dev -p 5007
+            # is the local script only; the Dockerfile drops back to 3000 —
+            # matches the Service targetPort).
+            - name: PORT
+              value: "3000"
+            # In-cluster API URL — Server Components fetch this directly and the
+            # /api/:path* rewrite (next.config.ts) proxies to it. The image
+            # origin (NEXT_PUBLIC_IMAGE_BASE_URL) is baked at build, not here.
+            - name: IRANG_API_URL
+              value: http://irang-api.irang-dev.svc.cluster.local:8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15

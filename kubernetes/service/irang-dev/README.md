@@ -3,8 +3,8 @@
 Development environment for [`irang`](../irang/). Differs from prd only in:
 
 - **Namespace** — `irang-dev`
-- **Domain** — `api-dev.irang.me` / `admin-dev.irang.me`
-- **NodePorts** — `30506` (api), `30507` (admin-web)
+- **Domain** — `api-dev.irang.me` (api) / `admin-dev.irang.me` (admin) / `dev.irang.me` (public web)
+- **NodePorts** — `30506` (api), `30507` (admin-web), `30509` (web)
 - **DB** — `postgres-dev` on db01 port `5443`, database `sssup_dev` (same instance as `maji-dev` / postgres-dev shares the cluster)
 - **R2 bucket** — `irang-dev` (separate from `irang-prod`), served via `c1-dev.irang.me`
 - **Image tag** — `:dev-placeholder` → CI rewrites to `:<sha>` on push to `develop` branch (see `.github/workflows/deploy-irang-dev.yml` in the sssup repo)
@@ -25,6 +25,7 @@ Add in the `sssup` tunnel's **Public Hostnames** tab:
 | --- | --- | --- | --- |
 | `api-dev` | `irang.me` | HTTP | `irang-api.irang-dev.svc.cluster.local:8080` |
 | `admin-dev` | `irang.me` | HTTP | `irang-admin-web.irang-dev.svc.cluster.local:3000` |
+| `dev` | `irang.me` | HTTP | `irang-web.irang-dev.svc.cluster.local:3000` |
 | `c1-dev` | `irang.me` | (origin) | R2 custom domain (set on the bucket page) |
 
 ### 2. R2 bucket
@@ -58,11 +59,11 @@ Admin accounts live in the DB (`irang.admin_users`), not in Infisical. Seed the 
 
 ### 5. ArgoCD Applications
 
-Three apps named `irang-api-dev`, `irang-admin-web-dev`, `irang-secret-dev` — point at `kubernetes/service/irang-dev/{api,admin,}` paths. See parent README §6 for the YAML pattern.
+Four apps named `irang-api-dev`, `irang-admin-web-dev`, `irang-web-dev`, `irang-secret-dev` — point at `kubernetes/service/irang-dev/{api,admin,web,}` paths. The apps are per-component (one path each), NOT a single recursive app, so a new component needs its own app — adding files under `web/` alone won't sync. See parent README §6 for the YAML pattern (`irang-web-dev` mirrors `irang-admin-web-dev`, only the `path` changes to `kubernetes/service/irang-dev/web`).
 
 ### 6. CI
 
-`develop` branch triggers `.github/workflows/deploy-irang-dev.yml` in the sssup repo. Images push to GHCR (`ghcr.io/80rian/irang-{api,admin-web}:dev` + `:<sha>`) and manifest commit-back rewrites the `:dev-placeholder` tag.
+`develop` branch triggers `.github/workflows/deploy-irang-dev.yml` in the sssup repo. Images push to GHCR (`ghcr.io/80rian/irang-{api,admin-web,web}:dev` + `:<sha>`) and manifest commit-back rewrites the `:dev-placeholder` tag. `irang-web` is the public reading surface (`apps/irang/web`) served at `dev.irang.me`.
 
 ### 7. Verify
 
