@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: personality-web
+  namespace: irang
+  labels:
+    app: personality-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: personality-web
+  template:
+    metadata:
+      labels:
+        app: personality-web
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      nodeSelector:
+        kubernetes.io/hostname: dev01
+      # Native sidecar pattern (k8s 1.29+), same wiring as irang-api. kagi-serve
+      # is an initContainer with restartPolicy: Always so k8s starts it BEFORE
+      # the web container and keeps it running. The /api/interpret route POSTs to
+      # http://127.0.0.1:8921/chat — without the sidecar up first the route 502s.
+      # Auth secrets are reused from irang-secret (same Kagi account as irang-api).
+      initContainers:
+        - name: kagi-serve
+          image: ghcr.io/marshallku/kagi:latest
+          imagePullPolicy: Always
+          restartPolicy: Always
+          args:
+            - "serve"
+            - "-addr"
+            - "0.0.0.0:8921"
+          ports:
+            - containerPort: 8921
+          env:
+            - name: KAGI_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_EMAIL
+            - name: KAGI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: KAGI_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      containers:
+        - name: web
+          # CI (deploy-prd.yml in marshallku/personality-test) rewrites this tag
+          # to :<sha> on push to master.
+          image: ghcr.io/marshallku/personality-test:prd-placeholder
+          ports:
+            - containerPort: 3000
+          env:
+            # Next.js standalone server (PORT/HOSTNAME read in the Dockerfile).
+            - name: PORT
+              value: "3000"
+            # Kagi proxy — the kagi-serve sidecar hosts /chat on localhost:8921.
+            - name: KAGI_BASE_URL
+              value: http://127.0.0.1:8921
+            # Custom Assistant (profile) UUID for narrative interpretation.
+            # Must exist under the Kagi account behind irang-secret KAGI_EMAIL.
+            - name: KAGI_PROFILE_ID
+              value: 09fd3173-a654-4ba7-861b-7873940f8efb
+            # Kagi proxy requires an explicit model every call.
+            - name: KAGI_MODEL
+              value: claude-4-sonnet
+            # SQLite interpretation cache → mounted volume (see volumeMounts).
+            - name: CACHE_DB_PATH
+              value: /app/data/cache.db
+          volumeMounts:
+            - name: cache
+              mountPath: /app/data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        # Cache is regenerable (a miss just re-calls the LLM), so emptyDir is
+        # enough — it survives container restarts within the pod but not a
+        # reschedule. Swap for a PVC if LLM cost makes persistence worthwhile.
+        - name: cache
+          emptyDir: {}

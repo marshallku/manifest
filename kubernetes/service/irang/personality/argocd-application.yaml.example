@@ -1,0 +1,22 @@
+# Register personality-web with ArgoCD (run once, manually — Application CRs
+# are not synced from this repo). `.example` so the personality-web Application
+# itself doesn't try to apply this file (it ignores *.yaml.example by extension).
+#
+#   kubectl apply -f kubernetes/service/irang/personality/argocd-application.yaml.example
+#
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: personality-web
+  namespace: argocd
+spec:
+  project: miniapp
+  source:
+    repoURL: https://github.com/marshallku/manifest.git
+    targetRevision: HEAD
+    path: kubernetes/service/irang/personality
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: irang
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
