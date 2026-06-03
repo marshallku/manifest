@@ -68,7 +68,7 @@ spec:
         - name: web
           # CI (deploy-prd.yml in marshallku/personality-test) rewrites this tag
           # to :<sha> on push to master.
-          image: ghcr.io/marshallku/personality-test:prd-placeholder
+          image: ghcr.io/marshallku/personality-test:c7c54f3cf47a937ca08161a8493db4fa3adf2d83
           ports:
             - containerPort: 3000
           env:
