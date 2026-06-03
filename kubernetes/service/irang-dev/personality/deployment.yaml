@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: personality-web
-  namespace: irang
+  namespace: irang-dev
   labels:
     app: personality-web
 spec:

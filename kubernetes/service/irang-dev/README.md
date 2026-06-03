@@ -26,6 +26,7 @@ Add in the `sssup` tunnel's **Public Hostnames** tab:
 | `api-dev` | `irang.me` | HTTP | `irang-api.irang-dev.svc.cluster.local:8080` |
 | `admin-dev` | `irang.me` | HTTP | `irang-admin-web.irang-dev.svc.cluster.local:3000` |
 | `dev` | `irang.me` | HTTP | `irang-web.irang-dev.svc.cluster.local:3000` |
+| `personality` | `irang.me` | HTTP | `personality-web.irang-dev.svc.cluster.local:3000` |
 | `c1-dev` | `irang.me` | (origin) | R2 custom domain (set on the bucket page) |
 
 ### 2. R2 bucket
@@ -86,3 +87,42 @@ kubectl -n irang-dev exec -it deploy/irang-api -- \
 ```
 
 After that, sign in at `https://admin-dev.irang.me/login`. From there, generate invites for other admins/editors via the **사용자 → 초대 관리** page. Each invite is single-use, email-locked, and expires within 30 days.
+
+## personality-web (personality.irang.me)
+
+Standalone Next.js 16 personality-test app
+([`marshallku/personality-test`](https://github.com/marshallku/personality-test)),
+co-located in the `irang-dev` namespace **only** to reuse `irang-secret`
+(Kagi creds) and `ghcr-secret`. It shares no DB, API, or Infisical key with
+irang itself — it just calls a `kagi-serve` sidecar (same pod) for LLM
+narrative interpretation and caches results in an on-pod SQLite file
+(`emptyDir`). Despite living in `-dev`, it is served at the clean apex
+subdomain `personality.irang.me` (the namespace doesn't constrain the public
+hostname).
+
+- **Manifest** — `personality/{deployment,service}.yaml`. NodePort `30510`.
+  Image `ghcr.io/marshallku/personality-test:<sha>`, pulled with the existing
+  `ghcr-secret` (already pulls `marshallku/kagi`).
+- **CI** — `marshallku/personality-test`'s `.github/workflows/deploy-prd.yml`
+  (push to `master`) builds the image → GHCR → rewrites the tag in
+  `personality/deployment.yaml`. Needs a `MANIFEST_REPO_TOKEN` repo secret
+  (PAT, `contents:write` on `marshallku/manifest`) for the commit-back;
+  without it the build still succeeds but the tag must be bumped by hand.
+- **ArgoCD** — register once (CR is not synced from the repo):
+
+  ```sh
+  kubectl apply -f kubernetes/service/irang-dev/personality/argocd-application.yaml.example
+  ```
+- **Cloudflare** — add the `personality.irang.me` Public Hostname (row in §1).
+- **Verify**
+
+  ```sh
+  kubectl -n irang-dev rollout status deploy/personality-web --timeout=3m
+  kubectl -n irang-dev get pod -l app=personality-web   # web + kagi-serve, 2/2
+  curl -sS -o /dev/null -w "%{http_code}\n" https://personality.irang.me   # 200
+  ```
+
+> **Heads-up:** `KAGI_PROFILE_ID` (`09fd3173-…`, the narrative Custom Assistant)
+> must exist under the Kagi account whose creds live in `irang-secret`
+> (`KAGI_EMAIL`). If it was created under a different account during local dev,
+> repoint the env or recreate the profile — otherwise `/api/interpret` 500s.

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: personality-web
-  namespace: irang
+  namespace: irang-dev
   labels:
     app: personality-web
 spec:
@@ -10,7 +10,7 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
-      # irang uses 30504 (api), 30505 (admin), 30508 (web); 30509 is free.
-      nodePort: 30509
+      # irang-dev uses 30506 (api), 30507 (admin), 30509 (web); 30510 is free.
+      nodePort: 30510
   selector:
     app: personality-web
