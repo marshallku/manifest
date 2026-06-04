@@ -1,0 +1,18 @@
+[package]
+name = "image-check"
+version = "0.1.0"
+edition = "2021"
+description = "Detect outdated third-party container images in this GitOps manifest repo"
+
+[[bin]]
+name = "image-check"
+path = "src/main.rs"
+
+[dependencies]
+ureq = { version = "2", default-features = false, features = ["tls"] }
+serde_json = "1"
+regex = "1"
+anyhow = "1"
+
+[profile.release]
+opt-level = 2
