@@ -1,8 +1,7 @@
 name: image-updates
 
-# Weekly check for outdated third-party container images. Builds and runs
-# tools/image-check, then upserts a single tracking Issue when anything is
-# behind (and auto-closes it once everything is current).
+# Weekly check for outdated third-party container images via the reusable
+# marshallku/image-check action, which upserts a single tracking Issue.
 
 on:
   schedule:
@@ -29,54 +28,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache cargo build
-        uses: Swatinem/rust-cache@v2
+      - id: ic
+        uses: marshallku/image-check@v1
         with:
-          workspaces: tools/image-check
-
-      - name: Build image-check
-        run: cargo build --release --manifest-path tools/image-check/Cargo.toml
-
-      - name: Run image-check
-        id: run
-        run: |
-          set +e
-          ./tools/image-check/target/release/image-check . --markdown > body.md
-          code=$?
-          set -e
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "image-check exit code: $code"
-          cat body.md
+          path: .
 
       - name: Ensure label exists
         run: gh label create "$ISSUE_LABEL" --color FFA500 --description "Outdated third-party container images" --force
 
       - name: Upsert / close tracking issue
+        env:
+          REPORT: ${{ steps.ic.outputs.report }}
+          OUTDATED: ${{ steps.ic.outputs.outdated-count }}
+          ERRORS: ${{ steps.ic.outputs.error-count }}
         run: |
-          code="${{ steps.run.outputs.code }}"
           num=$(gh issue list --label "$ISSUE_LABEL" --state open --json number --jq '.[0].number // empty')
-
-          case "$code" in
-            10|20)
-              # 10 = outdated images found · 20 = some registries errored
-              if [ -n "$num" ]; then
-                echo "Updating issue #$num"
-                gh issue edit "$num" --body-file body.md
-              else
-                echo "Creating tracking issue"
-                gh issue create --title "$ISSUE_TITLE" --label "$ISSUE_LABEL" --body-file body.md
-              fi
-              ;;
-            0)
-              if [ -n "$num" ]; then
-                echo "All current — closing issue #$num"
-                gh issue close "$num" --comment "All third-party images are up to date ✅ (auto-closed)"
-              else
-                echo "All third-party images are up to date ✅"
-              fi
-              ;;
-            *)
-              echo "::error::image-check failed with exit code $code"
-              exit 1
-              ;;
-          esac
+          # Surface both outdated images and registry errors; only auto-close
+          # when everything is current AND nothing errored.
+          if [ "$OUTDATED" != "0" ] || [ "$ERRORS" != "0" ]; then
+            if [ -n "$num" ]; then
+              echo "Updating issue #$num ($OUTDATED outdated, $ERRORS errors)"
+              printf '%s' "$REPORT" | gh issue edit "$num" --body-file -
+            else
+              echo "Creating tracking issue ($OUTDATED outdated, $ERRORS errors)"
+              printf '%s' "$REPORT" | gh issue create --title "$ISSUE_TITLE" --label "$ISSUE_LABEL" --body-file -
+            fi
+          elif [ -n "$num" ]; then
+            echo "All current — closing issue #$num"
+            gh issue close "$num" --comment "All third-party images are up to date ✅ (auto-closed)"
+          else
+            echo "All third-party images are up to date ✅"
+          fi
