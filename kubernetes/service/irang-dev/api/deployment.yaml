@@ -66,7 +66,7 @@ spec:
             periodSeconds: 30
       containers:
         - name: api
-          image: ghcr.io/80rian/irang-api:385c1922cfbf6d5fd69f58dd90403804d613aa62
+          image: ghcr.io/80rian/irang-api:7acfd5b6f9b3dc3ac8eb7400acc3df33092b4588
           ports:
             - containerPort: 8080
           env:
