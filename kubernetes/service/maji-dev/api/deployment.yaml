@@ -21,7 +21,7 @@ spec:
         kubernetes.io/hostname: dev01
       containers:
         - name: api
-          image: ghcr.io/80rian/maji-web-api:385c1922cfbf6d5fd69f58dd90403804d613aa62
+          image: ghcr.io/80rian/maji-web-api:c0ae184b75988cf55f5c4778f26d37fa26bab43a
           ports:
             - containerPort: 8080
           env:
