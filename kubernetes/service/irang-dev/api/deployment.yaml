@@ -26,8 +26,7 @@ spec:
       # the AI panel goes 503 for the lifetime of the pod.
       initContainers:
         - name: kagi-serve
-          image: ghcr.io/marshallku/kagi:latest
-          imagePullPolicy: Always
+          image: ghcr.io/marshallku/kagi:0ca3adfdf4dd4c6116d386f82b0ebff5f3f781c8
           restartPolicy: Always
           args:
             - "serve"
