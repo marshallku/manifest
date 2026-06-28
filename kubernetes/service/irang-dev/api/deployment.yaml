@@ -149,6 +149,24 @@ spec:
               value: claude-4-sonnet
             - name: PROMPTS_DIR
               value: /docs/prompts
+            # Card-news render — irang-api POSTs slides to irang-web's
+            # /render/card (Satori PNG). Without this the render/preview routes
+            # answer 503 (or 404 on images before fd65524). In-cluster Service URL,
+            # origin only (the client appends /render/card).
+            - name: IRANG_RENDER_BASE_URL
+              value: http://irang-web.irang-dev.svc.cluster.local:3000
+            # Shared secret the render route checks. MUST match irang-web's
+            # IRANG_RENDER_TOKEN; irang-web fail-closes to 503 without it in prod.
+            - name: IRANG_RENDER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: IRANG_RENDER_TOKEN
+            # Public R2/CDN origin used to compose a slide's stored photo object
+            # key into the absolute URL the renderer fetches (same host as
+            # S3_PUBLIC_URL).
+            - name: IRANG_IMAGE_BASE_URL
+              value: https://c1-dev.irang.me
           resources:
             requests:
               cpu: 50m

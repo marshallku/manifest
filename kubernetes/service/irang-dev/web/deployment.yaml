@@ -36,6 +36,20 @@ spec:
             # origin (NEXT_PUBLIC_IMAGE_BASE_URL) is baked at build, not here.
             - name: IRANG_API_URL
               value: http://irang-api.irang-dev.svc.cluster.local:8080
+            # Render route shared secret — MUST match irang-api's
+            # IRANG_RENDER_TOKEN. The /render/card route fail-closes to 503 in
+            # production without it (it's the gate that stops the route being an
+            # open image generator).
+            - name: IRANG_RENDER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: IRANG_RENDER_TOKEN
+            # SSRF allow-list for the slide photos the render route fetches:
+            # the R2/CDN origin host (article images) + Pexels (stock). Hostnames
+            # only, comma-separated. Unset in production fail-closes photo cards.
+            - name: RENDER_IMAGE_ALLOWED_HOSTS
+              value: c1-dev.irang.me,images.pexels.com
           resources:
             requests:
               cpu: 50m
