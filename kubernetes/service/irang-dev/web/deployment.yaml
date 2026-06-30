@@ -22,7 +22,7 @@ spec:
       containers:
         - name: web
           # CI (deploy-irang-dev.yml) rewrites this tag to :<sha> on push to develop.
-          image: ghcr.io/80rian/irang-web:fd65524d65b31814be649e1d328bde8f78963c5c
+          image: ghcr.io/80rian/irang-web:3147af0abd292675bc3fb15e7c26efd402098d63
           ports:
             - containerPort: 3000
           env:
