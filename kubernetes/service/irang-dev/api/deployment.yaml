@@ -167,6 +167,29 @@ spec:
             # S3_PUBLIC_URL).
             - name: IRANG_IMAGE_BASE_URL
               value: https://c1-dev.irang.me
+            # Stock-photo sourcing for slides the source article has no image for.
+            # Each provider opt-in; tried Pexels → Unsplash → Pixabay until one
+            # matches. All unset → slides stay text-only. (Unsplash API terms ask
+            # for attribution/hotlinking — enabling it is a deliberate opt-in.)
+            # The image CDN hosts must also be on irang-web's RENDER_IMAGE_ALLOWED_HOSTS.
+            - name: PEXELS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: PEXELS_API_KEY
+                  optional: true
+            - name: UNSPLASH_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: UNSPLASH_ACCESS_KEY
+                  optional: true
+            - name: PIXABAY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: PIXABAY_API_KEY
+                  optional: true
           resources:
             requests:
               cpu: 50m

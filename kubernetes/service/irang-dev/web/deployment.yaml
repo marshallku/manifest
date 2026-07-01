@@ -46,10 +46,12 @@ spec:
                   name: irang-secret
                   key: IRANG_RENDER_TOKEN
             # SSRF allow-list for the slide photos the render route fetches:
-            # the R2/CDN origin host (article images) + Pexels (stock). Hostnames
-            # only, comma-separated. Unset in production fail-closes photo cards.
+            # the R2/CDN origin host (article images) + the stock CDNs (Pexels,
+            # Unsplash, Pixabay). Hostnames only, comma-separated; a leading "."
+            # matches subdomains (.pixabay.com covers pixabay.com + cdn.pixabay.com).
+            # Unset in production fail-closes photo cards.
             - name: RENDER_IMAGE_ALLOWED_HOSTS
-              value: c1-dev.irang.me,images.pexels.com
+              value: c1-dev.irang.me,images.pexels.com,images.unsplash.com,.pixabay.com
           resources:
             requests:
               cpu: 50m
