@@ -190,6 +190,21 @@ spec:
                   name: irang-secret
                   key: PIXABAY_API_KEY
                   optional: true
+            # Google Programmable Search (image mode) — broadest but third-party
+            # copyright; both required to enable. Selected images are re-hosted to
+            # R2 before publishing, so no render allow-list host is needed.
+            - name: GOOGLE_CSE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: GOOGLE_CSE_API_KEY
+                  optional: true
+            - name: GOOGLE_CSE_CX
+              valueFrom:
+                secretKeyRef:
+                  name: irang-secret
+                  key: GOOGLE_CSE_CX
+                  optional: true
           resources:
             requests:
               cpu: 50m
