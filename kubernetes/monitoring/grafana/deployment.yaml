@@ -92,3 +92,5 @@ spec:
                                 name: grafana-dashboard-containers
                           - configMap:
                                 name: grafana-dashboard-home-sensors
+                          - configMap:
+                                name: grafana-dashboard-mac-mini
