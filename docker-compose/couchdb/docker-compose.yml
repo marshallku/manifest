@@ -1,0 +1,14 @@
+services:
+    couchdb:
+        image: couchdb:3.5.2.1
+        restart: always
+        container_name: couchdb
+        ports:
+            - 5984:5984
+        environment:
+            - COUCHDB_USER=${COUCHDB_USER}
+            - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+        volumes:
+            - /mnt/hdd/data/couchdb/data:/opt/couchdb/data
+            - /mnt/hdd/data/couchdb/config:/opt/couchdb/etc/local.d
+            - ./default.d/livesync.ini:/opt/couchdb/etc/default.d/livesync.ini:ro

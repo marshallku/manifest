@@ -57,3 +57,13 @@ data:
             static_configs:
               - targets:
                   - loki:3100
+
+          # Mac mini (M4 Pro) — native darwin node_exporter, not a cluster node.
+          # Scraped over LAN; keep DHCP reservation for 192.168.219.141.
+          - job_name: mac-mini
+            static_configs:
+              - targets:
+                  - 192.168.219.141:9100
+                labels:
+                  instance: mac-mini
+                  node: mac-mini
