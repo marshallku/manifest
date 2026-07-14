@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playzy-api
+  namespace: playzy
+  labels:
+    app: playzy-api
+spec:
+  replicas: 1
+  # SQLite is a single-writer file on a ReadWriteOnce hostPath volume, so the api
+  # must never run two pods at once. Recreate (not RollingUpdate) guarantees the
+  # old pod releases the volume before the new one binds it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: playzy-api
+  template:
+    metadata:
+      labels:
+        app: playzy-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      # Pinned to dev01 so the pod lands on the node that holds the hostPath
+      # SQLite volume (see pvc.yaml).
+      nodeSelector:
+        kubernetes.io/hostname: dev01
+      # Native sidecar pattern (k8s 1.29+). kagi-serve is declared as an
+      # initContainer with restartPolicy: Always so k8s starts it BEFORE the api
+      # container and keeps it running for the pod's lifetime. It hosts kagi's
+      # /chat surface on localhost:8921; the api reaches it via KAGI_SERVE_URL.
+      # kagi is a dev/personal AI backend (ADR 0001) — the provider swap is a
+      # server-side change confined to callAI, invisible to app clients.
+      initContainers:
+        - name: kagi-serve
+          image: ghcr.io/marshallku/kagi:0ca3adfdf4dd4c6116d386f82b0ebff5f3f781c8
+          restartPolicy: Always
+          args:
+            - "serve"
+            - "-addr"
+            - "0.0.0.0:8921"
+          ports:
+            - containerPort: 8921
+          env:
+            - name: KAGI_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: playzy-secret
+                  key: KAGI_EMAIL
+            - name: KAGI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: playzy-secret
+                  key: KAGI_PASSWORD
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8921
+            initialDelaySeconds: 15
+            periodSeconds: 30
+      containers:
+        - name: api
+          image: ghcr.io/marshallku/playzy-backend:prd
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PLAYZY_ADDR
+              value: ":8080"
+            # kagi-serve sidecar on localhost (see initContainers above).
+            - name: KAGI_SERVE_URL
+              value: http://127.0.0.1:8921
+            # Pin the base model so generations stay deterministic across kagi
+            # host-config changes (matches the backend's committed default).
+            - name: KAGI_MODEL
+              value: claude-5-sonnet
+            # Authoritative quota is durable + crash-safe: reserve→commit ledger
+            # in a SQLite file on the hostPath volume (ADR 0002). REQUIRED and
+            # fail-closed — a missing value aborts boot rather than silently using
+            # the restart-volatile in-memory store.
+            - name: PLAYZY_QUOTA_STORE
+              value: sqlite
+            - name: PLAYZY_DB_PATH
+              value: /data/playzy.db
+            # Guards POST /v1/credits — the verified-purchase webhook presents it.
+            # Empty/unset disables the endpoint entirely.
+            - name: PLAYZY_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: playzy-secret
+                  key: PLAYZY_ADMIN_TOKEN
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: playzy-data

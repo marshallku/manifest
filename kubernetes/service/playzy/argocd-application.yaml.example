@@ -1,0 +1,26 @@
+# Register playzy with ArgoCD (run once, manually — Application CRs are not
+# synced from this repo). `.example` so ArgoCD's own directory sync ignores it.
+#
+#   kubectl apply -f kubernetes/service/playzy/argocd-application.yaml.example
+#
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: playzy
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/marshallku/manifest.git
+    targetRevision: HEAD
+    path: kubernetes/service/playzy
+    # recurse so the api/ subdirectory (deployment.yaml, service.yaml) is applied,
+    # not just the root-level namespace.yaml / pvc.yaml. `.yaml.example` files are
+    # ignored by ArgoCD's directory scan, so these templates are never applied.
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: playzy
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
