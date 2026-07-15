@@ -73,7 +73,7 @@ spec:
             periodSeconds: 30
       containers:
         - name: api
-          image: ghcr.io/marshallku/playzy-backend:918c3ba97f852c32ebf18bf9eb1183d2da5b3482
+          image: ghcr.io/marshallku/playzy-backend:7c3710e9ae6247d0d1b6280f1e4c1b29e0de5a5a
           ports:
             - containerPort: 8080
           env:
