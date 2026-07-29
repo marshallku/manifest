@@ -21,7 +21,7 @@ spec:
         kubernetes.io/hostname: dev01
       containers:
         - name: frontend
-          image: ghcr.io/80rian/maji-web:97363dda5ef9b2ebde574a1b9dcb5de947e8a578
+          image: ghcr.io/80rian/maji-web:f082d4bf16e5565db78b71374f2860f9560532ac
           ports:
             - containerPort: 3000
           env:
