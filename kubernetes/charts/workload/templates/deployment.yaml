@@ -1,0 +1,75 @@
+{{- include "workload.validate" . -}}
+{{- $root := . -}}
+{{- $ns := include "workload.namespace" . -}}
+{{- $secretName := include "workload.secretName" . -}}
+{{- range $name, $surface := .Values.surfaces }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $root.Values.app }}-{{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "workload.labels" (dict "root" $root "surface" $name) | nindent 4 }}
+spec:
+  replicas: {{ $surface.replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ $root.Values.app }}-{{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $root.Values.app }}-{{ $name }}
+        {{- include "workload.labels" (dict "root" $root "surface" $name) | nindent 8 }}
+    spec:
+      {{- with $root.Values.imagePullSecret }}
+      imagePullSecrets:
+        - name: {{ . }}
+      {{- end }}
+      {{- with $root.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ $surface.image | quote }}
+          {{- with $surface.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $surface.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ $surface.port }}
+          env:
+            - name: PORT
+              value: {{ $surface.port | quote }}
+            {{- range $surface.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- range $surface.secretEnv }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ . }}
+            {{- end }}
+          resources:
+            {{- toYaml ($surface.resources | default $root.Values.defaultResources) | nindent 12 }}
+          {{- $health := $surface.healthPath | default "/" }}
+          readinessProbe:
+            httpGet:
+              path: {{ $health }}
+              port: {{ $surface.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: {{ $health }}
+              port: {{ $surface.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 15
+{{- end }}

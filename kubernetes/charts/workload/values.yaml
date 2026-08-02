@@ -1,0 +1,80 @@
+# =============================================================================
+# workload — homelab app factory chart
+# One app == one values.yaml. Everything below is the full surface area.
+# =============================================================================
+
+# App identity. `app` is required; `namespace` defaults to `app`.
+app: ""
+namespace: ""
+
+# Render the app's Namespace so the chart is self-contained (matches the
+# per-service namespace.yaml the existing apps carry). Turn off if ArgoCD is
+# set to CreateNamespace=true instead.
+createNamespace: true
+
+# Image pull secret present in every app namespace (GHCR).
+imagePullSecret: ghcr-secret
+
+# Where app pods run. Matches the existing house convention (dev01 node).
+nodeSelector:
+  kubernetes.io/hostname: dev01
+
+# IngressClass wired to the Cloudflare Tunnel ingress controller. Setting a
+# surface `host` below is all it takes to get a public subdomain + DNS.
+ingressClassName: cloudflare-tunnel
+
+# ---------------------------------------------------------------------------
+# Surfaces: the deployable pieces of the app. Map of name -> spec so an app can
+# declare any of web / api / worker / admin ... Each surface becomes a
+# Deployment + ClusterIP Service; a surface with `host` also gets an Ingress.
+# ---------------------------------------------------------------------------
+surfaces: {}
+  # web:
+  #   image: ghcr.io/marshallku/example-web:latest   # required
+  #   port: 3000                                      # required
+  #   host: example.marshallku.dev                    # optional -> public Ingress
+  #   replicas: 1
+  #   healthPath: /                                   # probe path (default "/")
+  #   env:                                            # plain env vars
+  #     - name: API_URL
+  #       value: http://example-api:8080
+  #   secretEnv:                                      # keys pulled from the managed secret
+  #     - JWT_SECRET
+  #   resources:                                      # optional override of the defaults
+  #     requests: { cpu: 50m, memory: 128Mi }
+  #     limits:   { memory: 512Mi }
+  #   ingressAnnotations: {}                          # optional per-surface Ingress annotations
+
+# Default container resources when a surface does not override them.
+defaultResources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Secret: Infisical-managed secret synced into the namespace as `<app>-secret`
+# (or `secret.managedSecretName`). Surfaces reference its keys via `secretEnv`.
+# ---------------------------------------------------------------------------
+secret:
+  managedSecretName: ""        # defaults to "<app>-secret"
+  infisical:
+    enabled: false
+    projectSlug: ""            # e.g. example-prd
+    envSlug: prd
+    secretsPath: "/"
+    resyncInterval: 60
+    credentialsSecret: infisical-universal-auth   # universal-auth creds in the namespace
+
+# ---------------------------------------------------------------------------
+# Database: declarative homelab Postgres connection. When enabled, the DB
+# provisioning helper creates `<app>` database + role on the shared db01
+# instance and writes DATABASE_URL into the app's Infisical project; add
+# `DATABASE_URL` to a surface's `secretEnv` to consume it. `tier: dedicated`
+# is the escape hatch (a future CloudNativePG cluster) and is not yet wired.
+# ---------------------------------------------------------------------------
+database:
+  enabled: false
+  tier: shared                 # shared | dedicated
+  engine: homelab-postgres

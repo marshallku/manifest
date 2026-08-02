@@ -1,0 +1,10 @@
+{{- if .Values.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "workload.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.app }}
+    app.kubernetes.io/part-of: {{ .Values.app }}
+    app.kubernetes.io/managed-by: workload-chart
+{{- end }}

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: workload
+description: >-
+  Standard app workload for the homelab app factory. Renders web/api/worker
+  surfaces (Deployment + Service), Ingress via the Cloudflare Tunnel ingress
+  class, and an optional Infisical-managed secret. One values.yaml per app.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: marshallku

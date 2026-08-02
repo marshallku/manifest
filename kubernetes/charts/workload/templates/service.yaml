@@ -1,0 +1,20 @@
+{{- $root := . -}}
+{{- $ns := include "workload.namespace" . -}}
+{{- range $name, $surface := .Values.surfaces }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $root.Values.app }}-{{ $name }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "workload.labels" (dict "root" $root "surface" $name) | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $surface.port }}
+      targetPort: {{ $surface.port }}
+      protocol: TCP
+  selector:
+    app: {{ $root.Values.app }}-{{ $name }}
+{{- end }}
