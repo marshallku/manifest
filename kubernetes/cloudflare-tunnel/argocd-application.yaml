@@ -1,0 +1,42 @@
+# Cloudflare Tunnel ingress controller (STRRL) — the git-driven domain layer.
+#
+# Watches Ingress resources with ingressClassName "cloudflare-tunnel" and, via
+# the Cloudflare API, provisions the tunnel route + DNS CNAME and runs the
+# cloudflared connector. A new public subdomain becomes one Ingress host line —
+# no Zero Trust dashboard clicks, no NodePort.
+#
+# Apply once, by hand (namespace + sealed-secret must exist first):
+#   kubectl apply -f kubernetes/cloudflare-tunnel/namespace.yaml
+#   kubectl apply -f kubernetes/cloudflare-tunnel/sealed-secret.yaml
+#   kubectl apply -f kubernetes/cloudflare-tunnel/argocd-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflare-tunnel-ingress
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://helm.strrl.dev
+    chart: cloudflare-tunnel-ingress-controller
+    targetRevision: 0.0.24
+    helm:
+      valuesObject:
+        cloudflare:
+          secretRef:
+            name: cloudflare-tunnel-credentials
+            accountIDKey: account_id
+            tunnelNameKey: tunnel_name
+            apiTokenKey: api_token
+        ingressClass:
+          name: cloudflare-tunnel
+          isDefaultClass: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflare-tunnel
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
