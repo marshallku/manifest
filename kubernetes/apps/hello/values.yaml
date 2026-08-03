@@ -1,0 +1,11 @@
+# Dummy app that proves the factory pipeline end-to-end:
+# values.yaml push -> ApplicationSet -> Deployment/Service/Ingress -> public domain.
+# Uses a public image (traefik/whoami) so it needs no GHCR pull secret.
+app: hello
+imagePullSecret: ""          # public image — omit ghcr-secret
+surfaces:
+  web:
+    image: traefik/whoami:v1.10.1
+    port: 80
+    host: hello.marshallku.dev
+    healthPath: /

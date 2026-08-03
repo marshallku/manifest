@@ -1,0 +1,50 @@
+# Factory ApplicationSet — the auto-register layer.
+#
+# A git *directories* generator watches kubernetes/apps/*; each subdirectory
+# becomes one ArgoCD Application that renders the shared workload chart with that
+# app's values.yaml (multi-source: chart from one path, values from another via
+# the $values ref). Adding kubernetes/apps/<name>/values.yaml is all it takes to
+# deploy a new app — no per-app Application CR, no manual kubectl apply.
+#
+# Apply once, by hand (like the other Application CRs in this repo):
+#   kubectl apply -f kubernetes/applicationset/factory-apps.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: factory-apps
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/marshallku/manifest.git
+        revision: HEAD
+        directories:
+          - path: kubernetes/apps/*
+  template:
+    metadata:
+      name: "{{.path.basename}}"
+      labels:
+        app.kubernetes.io/managed-by: factory-applicationset
+    spec:
+      project: default
+      sources:
+        - repoURL: https://github.com/marshallku/manifest.git
+          targetRevision: HEAD
+          path: kubernetes/charts/workload
+          helm:
+            valueFiles:
+              - $values/kubernetes/apps/{{.path.basename}}/values.yaml
+        - repoURL: https://github.com/marshallku/manifest.git
+          targetRevision: HEAD
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.path.basename}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
