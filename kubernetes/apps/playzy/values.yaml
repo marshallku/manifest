@@ -1,0 +1,69 @@
+# playzy — toddler bedtime-story backend (AI gateway, ADR 0001), on the app
+# factory. Two surfaces:
+#   - api  : the public Playzy story API (api-playzy.marshallku.dev). Postgres
+#            quota store (ADR 0002) on shared db01; secrets via Infisical.
+#   - kagi : the dev/personal Kagi Assistant backend. The workload chart is
+#            one-container-per-surface (no sidecars), so kagi runs as its own
+#            cluster-internal surface (no host) instead of the co-pod sidecar the
+#            hand-rolled manifest used. The api reaches it over the ClusterIP
+#            service at http://playzy-kagi:8921. The api calls kagi lazily
+#            per-request (not at boot), so surface start order does not matter.
+#
+# Both images are private → the namespace needs `ghcr-secret` (default
+# imagePullSecret kept). Infisical `playzy-prd` must carry KAGI_EMAIL,
+# KAGI_PASSWORD, PLAYZY_ADMIN_TOKEN, PLAYZY_DATABASE_URL. The db01 `playzy`
+# database + schema are already provisioned + migrated, so `database.enabled`
+# stays false (no re-provision) — PLAYZY_DATABASE_URL is consumed straight from
+# Infisical.
+app: playzy
+
+surfaces:
+  api:
+    image: ghcr.io/marshallku/playzy-backend:a919451f99b114dc9f57e2ec4814da8d1489e9c8 # CI-managed tag
+    port: 8080
+    host: api-playzy.marshallku.dev
+    healthPath: /healthz
+    env:
+      - name: PLAYZY_ADDR
+        value: ":8080"
+      - name: KAGI_SERVE_URL
+        value: http://playzy-kagi:8921
+      # Pin the base model so generations stay deterministic across kagi host
+      # changes (matches the backend's committed default).
+      - name: KAGI_MODEL
+        value: claude-5-sonnet
+      # Authoritative durable quota on shared Postgres (ADR 0002). REQUIRED +
+      # fail-closed — a missing value aborts boot rather than silently using the
+      # restart-volatile in-memory store.
+      - name: PLAYZY_QUOTA_STORE
+        value: postgres
+    secretEnv:
+      - PLAYZY_DATABASE_URL
+      - PLAYZY_ADMIN_TOKEN
+
+  kagi:
+    image: ghcr.io/marshallku/kagi:0ca3adfdf4dd4c6116d386f82b0ebff5f3f781c8
+    port: 8921
+    # No host → cluster-internal only. Auto-logs in from KAGI_EMAIL/KAGI_PASSWORD.
+    args:
+      - serve
+      - -addr
+      - 0.0.0.0:8921
+    healthPath: /healthz
+    secretEnv:
+      - KAGI_EMAIL
+      - KAGI_PASSWORD
+
+# Sync the Infisical playzy-prd project into the namespace secret `playzy-secret`
+# that the secretEnv keys above reference. Needs `infisical-universal-auth` in
+# the namespace (Step 2 bootstrap).
+secret:
+  infisical:
+    enabled: true
+    projectSlug: playzy-prd
+    envSlug: prd
+
+# DB already provisioned on db01 (see playzy docs/deploy/postgres-k3s-migration.md);
+# PLAYZY_DATABASE_URL is supplied via Infisical, so no factory provisioning here.
+database:
+  enabled: false
