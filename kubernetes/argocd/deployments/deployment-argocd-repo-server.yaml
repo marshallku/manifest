@@ -6,6 +6,7 @@ metadata:
     app.kubernetes.io/name: argocd-repo-server
     app.kubernetes.io/part-of: argocd
   name: argocd-repo-server
+  namespace: argocd
 spec:
   selector:
     matchLabels:
@@ -321,9 +322,16 @@ spec:
             - mountPath: /home/argocd/cmp-server/plugins
               name: plugins
       initContainers:
+        # UPSTREAM DIVERGENCE — do not revert when re-syncing from argo-cd install.yaml.
+        # Upstream (v3.3.5) uses `ln -s`, which is not idempotent. `var-files` is an
+        # emptyDir, and an emptyDir survives container restarts and host reboots (it is
+        # only removed when the pod leaves the node). On a restart `cp --update=none`
+        # silently skips and `ln -s` then hits the existing symlink and exits 1 →
+        # permanent CrashLoopBackOff of copyutil, which takes every Application to
+        # SYNC Unknown. Observed 2026-07-31 (2-day outage). `-f` makes it idempotent.
         - args:
             - /bin/cp --update=none /usr/local/bin/argocd /var/run/argocd/argocd && /bin/ln
-              -s /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
+              -sf /var/run/argocd/argocd /var/run/argocd/argocd-cmp-server
           command:
             - sh
             - -c
