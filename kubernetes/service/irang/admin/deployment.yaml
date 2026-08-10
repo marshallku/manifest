@@ -21,7 +21,7 @@ spec:
         kubernetes.io/hostname: dev01
       containers:
         - name: admin-web
-          image: ghcr.io/80rian/irang-admin-web:96febf4c2c254430ab45723140a75d83f24a60aa
+          image: ghcr.io/80rian/irang-admin-web:e4ec7642a0b6b245d3ba94b25473753d40771949
           ports:
             - containerPort: 3000
           env:
