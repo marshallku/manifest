@@ -1,0 +1,51 @@
+# AdGuard Home — secondary/failover DNS for the LAN (host: pi01).
+#
+# The primary runs on prd01, which is also the k3s control-plane and the host of
+# every other docker-compose stack. This replica is kept out of the cluster and
+# off /mnt/hdd so that its only dependency is pi01 itself.
+#
+# First-time setup: ./bootstrap.sh (see README.md).
+
+services:
+    adguardhome:
+        image: adguard/adguardhome:v0.107.71 # keep in lockstep with the primary
+        container_name: adguardhome
+        restart: unless-stopped
+        # Host networking, unlike the primary's port mapping. Behind a bridge every
+        # query arrives from the docker gateway address, which flattens per-client
+        # statistics and makes client-specific filtering rules unusable. It also
+        # keeps the web UI reachable across AdGuard's first-run port move (:3000
+        # during the install wizard, :3080 afterwards).
+        network_mode: host
+        volumes:
+            - /var/lib/homelab/adguard-home/work:/opt/adguardhome/work
+            - /var/lib/homelab/adguard-home/conf:/opt/adguardhome/conf
+
+    adguardhome-sync:
+        image: ghcr.io/bakito/adguardhome-sync:v0.9.2
+        container_name: adguardhome-sync
+        restart: unless-stopped
+        depends_on:
+            - adguardhome
+        # Instance URLs and credentials only — see .env.example.
+        env_file:
+            - .env
+        environment:
+            - TZ=Asia/Seoul
+        command:
+            - run
+            - "--cron=*/10 * * * *"
+            # A single unreachable endpoint should not abort the whole run; the next
+            # cron tick retries.
+            - --continueOnError
+            # No remote-trigger API. It is unauthenticated unless credentials are
+            # set, and the cron schedule already covers every case we need.
+            - --api-port=0
+            # DHCP must never be replicated. The primary serves DHCP for the LAN;
+            # a second server handing out competing leases is a network-wide outage.
+            - --feature-dhcp-server-config=false
+            - --feature-dhcp-static-leases=false
+            # Keep this replica's own short retention rather than inheriting the
+            # primary's long window — this is what bounds SD card writes.
+            - --feature-query-log-config=false
+            - --feature-stats-config=false

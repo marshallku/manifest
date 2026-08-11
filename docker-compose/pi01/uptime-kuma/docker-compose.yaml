@@ -1,0 +1,23 @@
+# Uptime Kuma — external availability probe (host: pi01).
+#
+# Deliberately not Prometheus + blackbox-exporter + Alertmanager: that stack
+# would have to live somewhere, and in-cluster it dies with the very outage it
+# is supposed to report. Uptime Kuma is self-contained — probing, alerting and
+# UI in one container — so pi01 can still page when prd01 and the whole k3s
+# cluster are unreachable. It is also the homelab's only alerting path today;
+# the in-cluster Prometheus has no rules and no Alertmanager.
+#
+# Monitors and notification channels are configured in the web UI (Kuma has no
+# config-as-code); see README.md for the intended set.
+
+services:
+    uptime-kuma:
+        image: louislam/uptime-kuma:1.23.17
+        container_name: uptime-kuma
+        restart: unless-stopped
+        ports:
+            - "3001:3001"
+        environment:
+            - TZ=Asia/Seoul
+        volumes:
+            - /var/lib/homelab/uptime-kuma:/app/data

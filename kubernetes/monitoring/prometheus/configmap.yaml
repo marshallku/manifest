@@ -67,3 +67,15 @@ data:
                 labels:
                   instance: mac-mini
                   node: mac-mini
+
+          # pi01 (Raspberry Pi 4B) — runs the secondary AdGuard and the external
+          # uptime probe, deliberately outside the cluster so a prd01 outage does
+          # not take LAN DNS and alerting with it. Same LAN-scrape arrangement as
+          # the Mac mini; keep DHCP reservation for 192.168.219.127.
+          - job_name: pi01
+            static_configs:
+              - targets:
+                  - 192.168.219.127:9100
+                labels:
+                  instance: pi01
+                  node: pi01
