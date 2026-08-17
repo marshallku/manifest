@@ -7,10 +7,17 @@ daemon. Which host a stack belongs to is decided by directory layout:
 | --- | --- | --- |
 | `<app>/` | `prd01` (192.168.219.100) | Historical flat layout. Also the k3s control-plane. |
 | `pi01/<app>/` | `pi01` (192.168.219.127) | Raspberry Pi 4B, **arm64** — images must be multi-arch. |
+| `media01/<app>/` | `media01` (192.168.219.191) | VM on `pve02`. Bulk storage on a ZFS mirror of **SMR** drives — read that host's README before adding anything that writes small and often. |
 
 The flat top-level directories predate the split and are left in place because
 moving them would change the deploy paths already in use on `prd01`. New stacks
 go under a host directory.
+
+One flat directory is on its way out: `nextcloud/` is being moved to
+`media01/nextcloud/`, so that the largest body of data in the homelab stops
+living on a single unmirrored disk. Until that migration is finished and
+verified, `nextcloud/` remains the running instance — see
+`media01/README.md` for the procedure and the order of the cutover steps.
 
 ## Why pi01 exists
 

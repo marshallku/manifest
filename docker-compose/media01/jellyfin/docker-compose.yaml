@@ -1,0 +1,42 @@
+# Jellyfin — media server (host: media01).
+#
+# The library lives on `tank`, a ZFS mirror of two ST8000DM004 drives. Those are
+# DM-SMR: sustained *sequential* writes are fine (measured 129-161 MB/s across a
+# 35 GiB run, no cliff), but a stream of small random writes collapses them to
+# ~10-20 MB/s once the CMR cache zone fills. So the split below is not a
+# preference, it is the constraint the whole host is arranged around:
+#
+#   /config, /cache  -> NVMe   (library DB, image cache, transcoding scratch)
+#   /media           -> virtiofs -> tank  (the video files themselves)
+#
+# /cache is what makes this matter in practice — Jellyfin writes transcoding
+# segments there continuously while a client is playing.
+
+services:
+    jellyfin:
+        image: jellyfin/jellyfin:10.11.11
+        container_name: jellyfin
+        restart: unless-stopped
+        # Runs as the unprivileged `marshall` (1000:1000) rather than root; the
+        # bind mounts below are owned by that uid on both the NVMe side and,
+        # through virtiofs, on the host's ZFS datasets.
+        user: "1000:1000"
+        ports:
+            - "8096:8096"
+        environment:
+            - TZ=Asia/Seoul
+            # Without this Jellyfin advertises a container-internal address to
+            # clients that discover it on the LAN.
+            - JELLYFIN_PublishedServerUrl=http://192.168.219.191:8096
+        volumes:
+            - /var/lib/homelab/jellyfin/config:/config
+            - /var/lib/homelab/jellyfin/cache:/cache
+            # Read-only: Jellyfin never needs to write into the library, and this
+            # removes any path by which a library scan can damage the originals.
+            - /mnt/media:/media:ro
+        # No GPU passthrough yet. The host has a GTX 1060 (Pascal, NVENC-capable)
+        # but passing it through binds it to this VM exclusively, and the E5-2696
+        # v3's 36 threads handle several 1080p software transcodes — while iOS
+        # clients (Jellyfin app, Infuse) direct-play most files and never reach
+        # the transcoder at all. Revisit only if transcoding is measured to be
+        # the bottleneck; adding it later costs one VM reboot.

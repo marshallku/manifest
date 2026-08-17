@@ -1,0 +1,83 @@
+# Nextcloud — migrated off prd01 (host: media01).
+#
+# This is the *same instance* that used to run from `docker-compose/nextcloud/`
+# on prd01, moved rather than rebuilt. It was the largest single body of data in
+# the homelab sitting on one unmirrored disk (`/mnt/hdd`), which is precisely
+# the "only one copy of the data" problem at the top of the hardware roadmap.
+# Here it sits on `tank`, a two-drive ZFS mirror with checksums.
+#
+# Image versions are pinned to exactly what prd01 was running (Nextcloud
+# 31.0.13, MariaDB 12.1.2). Do not bump them in the same change that moves the
+# data: if something breaks you want to know whether it was the move or the
+# upgrade. Upgrade as a separate, later commit.
+#
+# Storage split, forced by `tank` being a mirror of two DM-SMR drives:
+#
+#   /var/lib/mysql    -> NVMe      (a database on SMR is the classic way to
+#                                   destroy write throughput on these disks)
+#   /var/www/html     -> NVMe      (the application, plus appdata previews)
+#   .../html/data     -> virtiofs -> tank   (user files only)
+
+services:
+    db:
+        image: mariadb:12.1.2
+        container_name: nextcloud_db
+        restart: unless-stopped
+        # Matches what prd01 ran, so the datadir being restored is understood by
+        # exactly the same server version that wrote it.
+        command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+        volumes:
+            - /var/lib/homelab/nextcloud/db:/var/lib/mysql
+        ulimits:
+            memlock: "262144"
+        env_file:
+            - .env
+        # `up` used to race the database on prd01; app would start against a
+        # server still doing InnoDB recovery. Gate it properly instead.
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+
+    redis:
+        image: redis:8.8.1-trixie
+        container_name: nextcloud_redis
+        restart: unless-stopped
+        # New here; prd01 ran without it. Nothing uses it until `REDIS_HOST=redis`
+        # is added to .env — the image's config/redis.config.php reads that
+        # through getenv() at runtime, so no config.php edit is involved.
+        # Deliberately left unset during the migration so the move changes
+        # location and nothing else. See README.md.
+        volumes:
+            - /var/lib/homelab/nextcloud/redis:/data
+
+    app:
+        image: nextcloud:31.0.13-apache
+        container_name: nextcloud_app
+        restart: unless-stopped
+        ports:
+            - "8080:80"
+        volumes:
+            - /var/lib/homelab/nextcloud/html:/var/www/html
+            # User files only.
+            - /mnt/files:/var/www/html/data
+            # Nextcloud keeps its preview/thumbnail cache inside the data
+            # directory, named after the instance id. That is thousands of small
+            # files — the write pattern these SMR drives are worst at — so it is
+            # pulled back onto the NVMe by this nested mount.
+            #
+            # `ocglba52vmd1` is this instance's id, read from the live prd01
+            # instance (`occ config:system:get instanceid`). It is a property of
+            # the instance being migrated, not something Nextcloud regenerates,
+            # so it stays correct across the move. If this stack is ever pointed
+            # at a *different* instance, this path must be updated with it —
+            # otherwise previews silently land back on the mirror.
+            - /var/lib/homelab/nextcloud/appdata:/var/www/html/data/appdata_ocglba52vmd1
+        env_file:
+            - .env
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_started

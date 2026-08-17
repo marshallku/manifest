@@ -1,0 +1,33 @@
+# Immich overrides (host: media01).
+#
+# `docker-compose.yml` next to this file is vendored verbatim from upstream:
+#
+#   https://github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+#
+# It is committed unmodified so that `diff`-ing it against a new release shows
+# only what upstream changed. Every local decision belongs in this file instead.
+#
+# Upstream mounts a single `${UPLOAD_LOCATION}:/data`, which puts originals,
+# thumbnails and transcoded video on the same filesystem. That is wrong here:
+# `tank` is a ZFS mirror of two DM-SMR drives, and while large sequential writes
+# are fine on them, thumbnail generation is exactly the pattern that kills SMR —
+# thousands of small files written at once. A single library import would drag
+# the pool into its read-modify-write path for hours.
+#
+# So the two directories Immich churns are pulled back onto the NVMe, and only
+# the originals (`library/`, `upload/`) stay on the mirror:
+#
+#   /data/thumbs         -> NVMe
+#   /data/encoded-video  -> NVMe
+#   /data/*  (rest)      -> virtiofs -> tank
+#
+# Consequence to be aware of: these two directories are now outside whatever
+# snapshot/replication covers `tank`. That is acceptable because both are
+# derived data — Immich regenerates them from the originals — but it does mean a
+# restore is not complete until regeneration has run.
+
+services:
+    immich-server:
+        volumes:
+            - /var/lib/homelab/immich/thumbs:/data/thumbs
+            - /var/lib/homelab/immich/encoded-video:/data/encoded-video
