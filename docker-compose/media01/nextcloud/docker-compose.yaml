@@ -30,8 +30,19 @@ services:
             - /var/lib/homelab/nextcloud/db:/var/lib/mysql
         ulimits:
             memlock: "262144"
-        env_file:
-            - .env
+        # Deliberately NOT `env_file: .env`. That file carries MYSQL_HOST=db for
+        # the app container, and the MariaDB client libraries read MYSQL_HOST
+        # from the environment — so inside *this* container every client would
+        # connect over TCP to itself instead of the local socket. MariaDB only
+        # creates root@localhost, so root (and the image's own healthcheck.sh)
+        # gets "Access denied for user 'root'@'172.x.x.x'" and the container
+        # never becomes healthy. Pass only what the server itself needs.
+        environment:
+            - MARIADB_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+            - MARIADB_DATABASE=${MYSQL_DATABASE}
+            - MARIADB_USER=${MYSQL_USER}
+            - MARIADB_PASSWORD=${MYSQL_PASSWORD}
+            - MARIADB_AUTO_UPGRADE=1
         # `up` used to race the database on prd01; app would start against a
         # server still doing InnoDB recovery. Gate it properly instead.
         healthcheck:
