@@ -1,0 +1,255 @@
+# Homelab backup — what to collect, from where, into what.
+#
+# Read by the runner on storage01. Pull-based: storage01 reaches out to each
+# source, so no source host holds write credentials to the backup store.
+#
+# Three sections, deliberately orthogonal:
+#   destination — declared ONCE. Never repeat it per job; it drifts.
+#   sources     — how to reach a host and how to become root there. All
+#                 host-to-host variance lives here and nowhere else.
+#   jobs        — what to copy. References a source by name.
+#
+# Retention is NOT in this file, on purpose. See `destination.snapshot`.
+
+version: 1
+
+destination:
+    # Everything lands under here. This is `tank/backup/hosts` on pve02,
+    # exposed to this VM over virtiofs. It is a child dataset of the Proxmox
+    # `tank-backup` storage so that PVE's own vzdump pruning (keep-last=3)
+    # and this runner's retention never touch each other.
+    root: /mnt/backup/hosts
+
+    # The runner never runs `zfs` — the pool lives on the hypervisor, not in
+    # this VM. On a fully successful run it asks pve02 to take a snapshot.
+    #
+    # Two properties matter here and they are both deliberate:
+    #
+    #  1. The snapshot is triggered BY a successful collection, not by an
+    #     independent timer. A timer firing mid-rsync would capture a
+    #     formally-retained but internally inconsistent backup — worst of all
+    #     for jobs where a dump and its files have to match.
+    #
+    #  2. The SSH key on pve02 is a forced-command key that can ONLY create a
+    #     snapshot. storage01 cannot destroy or roll back one. Pruning and
+    #     replication to `vault` are driven by pve02's own timer, out of reach
+    #     of anything running here — so a runner bug or a compromise of this
+    #     VM cannot erase backup history. That is why no retention policy
+    #     appears in this file.
+    snapshot:
+        host: pve02
+        dataset: tank/backup/hosts
+
+sources:
+    prd01:
+        ssh: marshall@192.168.219.100
+        # `rsync --rsync-path="sudo rsync"`. prd01's sudo needs a password in
+        # general, but /etc/sudoers grants exactly:
+        #     marshall ALL=(root) NOPASSWD: /usr/bin/rsync --server --sender *
+        # `--server --sender` is rsync's send-only mode, so this reads any file
+        # as root and can write none. Verified: push, `cat /etc/shadow` and
+        # `rsync --daemon` are all refused.
+        privilege: sudo-rsync
+
+    storage01:
+        # The runner's own host. Dumps run against local containers; there is
+        # nothing to pull over the network.
+        local: true
+
+    k3s:
+        # Not reachable as a filesystem at all — pods are dumped through
+        # `kubectl exec`. kubeconfig comes from the runner's environment.
+        kubectl: {}
+
+# Stateful stacks defined in this repo but deliberately NOT backed up, recorded
+# so that "absent" is distinguishable from "forgotten":
+#
+#   couchdb, influxdb, postgres, postgres-dev
+#       Defined under docker-compose/ but never deployed on prd01 — no container
+#       and no directory under /mnt/hdd/data. Nothing exists to back up. If any
+#       of them is deployed, it needs a job here before it holds real data.
+#
+#   /mnt/hdd/data/nextcloud (21 GB)
+#       Superseded by the migration to storage01 on 2026-08-18. Kept only as a
+#       rollback path; delete it rather than back it up.
+#
+#   /mnt/hdd/data/cloud (37 GB)
+#       A Nextcloud install two generations old. Reclaimable space.
+#
+#   Bulk data already on `tank` (Nextcloud files, Immich originals, Jellyfin
+#   library) and all derived data (thumbnails, transcodes, previews).
+#       Copying tank to tank buys nothing; the vault replica and the offsite
+#       copy are what protect it. Derived data is cheaper to regenerate.
+
+jobs:
+    # ------------------------------------------------------------------ blog
+    - name: blog
+      source: prd01
+      paths:
+          - from: /mnt/hdd/data/blog-backend
+            to: blog/files
+            exclude:
+                # The Mongo datadir. Copying a live datadir with rsync yields an
+                # inconsistent database; the logical dump below replaces it.
+                - /db/
+            # `/config` is also mounted into the Mongo container but is empty in
+            # practice (4 KB, no entries), so it is copied rather than excluded.
+            # If it ever holds Mongo state, it must move to the exclude list.
+      dumps:
+          - to: blog/dump/mongo.archive.gz
+            engine: mongodump
+            container: blog-database
+            args: [--archive, --gzip]
+            # The image enables auth when MONGO_INITDB_ROOT_USERNAME is set, so
+            # read the credentials back out of the container rather than
+            # duplicating them into a secret file.
+            auth:
+                username_env: MONGO_INITDB_ROOT_USERNAME
+                password_env: MONGO_INITDB_ROOT_PASSWORD
+
+    # ------------------------------------------------------------ dongjoo.me
+    - name: dongjoo
+      source: prd01
+      paths:
+          - from: /mnt/hdd/data/dongjoo.me
+            to: dongjoo/files
+            exclude:
+                - /db/ # MySQL datadir — see dump below
+          - from: /mnt/hdd/data/dorp
+            to: dongjoo/dorp
+      dumps:
+          - to: dongjoo/dump/dongduwp.sql.gz
+            engine: mysqldump
+            container: dongjoome-db-1
+            database: dongduwp
+            # WordPress is entirely InnoDB, so this is a consistent snapshot of
+            # a running server — no downtime, no table locks.
+            args: [--single-transaction, --quick, --default-character-set=utf8mb4]
+            auth:
+                password_env: MYSQL_ROOT_PASSWORD
+
+    # ------------------------------------------------------------------- n8n
+    # n8n keeps everything in one 5.8 GB SQLite database in WAL mode. rsync of a
+    # live WAL database is not a backup — the main file, -wal and -shm are only
+    # meaningful together and only at a moment no writer is mid-commit.
+    - name: n8n
+      source: prd01
+      paths:
+          - from: /mnt/hdd/data/n8n
+            to: n8n/files
+            exclude:
+                - /database.sqlite # taken by the dump below instead
+                - /database.sqlite-wal
+                - /database.sqlite-shm
+                - /n8nEventLog*.log # ~29 MB of rotating logs, not state
+      dumps:
+          - to: n8n/dump/database.sqlite
+            engine: sqlite
+            # No container: the file is uid 1000 / mode 644 on the prd01 host, so
+            # the runner reads it directly without any privilege escalation.
+            # Requires `sqlite3` on prd01 (apt, one package — deliberately
+            # installed rather than fetched at backup time).
+            path: /mnt/hdd/data/n8n/database.sqlite
+            # VACUUM INTO takes a read transaction and writes a consistent,
+            # compacted copy while n8n keeps running. `.backup` would also work;
+            # this additionally reclaims free pages.
+            method: vacuum-into
+            # Unlike pg_dump/mysqldump, VACUUM INTO cannot stream to stdout — it
+            # must write a file on the SOURCE host first, which is then pulled
+            # and deleted. Declared here rather than hidden in the runner:
+            #   * needs free space >= the database size (5.8 GB today);
+            #     /mnt/hdd has ~1.7 TB free, so the margin is not close.
+            #   * removed after a successful transfer, and on failure too —
+            #     a half-written 5.8 GB file left behind every night is its own
+            #     outage.
+            #   * VACUUM INTO refuses to overwrite, so a leftover file from a
+            #     killed run would break every subsequent run until cleaned.
+            tmp: /mnt/hdd/tmp/n8n-database.sqlite
+
+    # --------------------------------------------------------- misc on prd01
+    # Small, file-only services with no database of their own.
+    - name: prd01-misc
+      source: prd01
+      paths:
+          - from: /mnt/hdd/data/adguard-home
+            to: misc/adguard-home
+          - from: /mnt/hdd/data/mrry.me
+            to: misc/mrry.me
+          - from: /mnt/hdd/data/portainer
+            to: misc/portainer
+          - from: /mnt/hdd/data/notes
+            to: misc/notes
+
+    # -------------------------------------------------------------- miniflux
+    # ⚠️ Cold data, and only correct while it stays cold.
+    #
+    # /mnt/hdd/data/miniflux/db is a PostgreSQL datadir (see
+    # ../../miniflux/docker-compose.yml). The stack is NOT deployed on prd01 —
+    # no container exists — so nothing is writing and an rsync of the datadir is
+    # a consistent cold copy. That is the only reason this is a `paths` job and
+    # not a `pg_dump` one.
+    #
+    # If miniflux is ever started again, this job becomes exactly the failure
+    # the rest of this file exists to prevent: rsync of a live datadir. Convert
+    # it to a pg_dump job at that moment, not after the first bad restore.
+    - name: miniflux-cold
+      source: prd01
+      paths:
+          - from: /mnt/hdd/data/miniflux
+            to: miniflux/files
+      precondition:
+          # The runner refuses the job if this container exists and is running.
+          container_not_running: miniflux-db
+
+    # ------------------------------------------------------------- infisical
+    - name: infisical
+      source: k3s
+      dumps:
+          - to: infisical/dump/infisical.sql.gz
+            engine: pg_dump
+            pod: infisical/infisical-postgres-0
+            container: postgres
+            auth:
+                username_env: POSTGRES_USER
+                password_env: POSTGRES_PASSWORD
+                database_env: POSTGRES_DB
+
+    # ------------------------------------------- storage01's own app databases
+    # Only the databases. The bulk data these apps serve already lives on
+    # `tank` — copying tank to tank buys nothing. What protects it is the
+    # `vault` replica and the offsite copy, both driven from pve02.
+    - name: storage01-db
+      source: storage01
+      dumps:
+          - to: storage01/dump/nextcloud.sql.gz
+            engine: mariadb-dump
+            container: nextcloud_db
+            database: clouddb
+            # --protocol=socket is load-bearing, not cosmetic: the client
+            # honours MYSQL_HOST from the environment and would otherwise
+            # connect over TCP to itself, where only root@localhost exists.
+            # --skip-ssl avoids the client rejecting the server's self-signed
+            # certificate. Both are dump *behaviour*, so they belong here and
+            # not under `auth`.
+            args:
+                [
+                    --single-transaction,
+                    --quick,
+                    --default-character-set=utf8mb4,
+                    --protocol=socket,
+                    --skip-ssl,
+                ]
+            auth:
+                # The container is started with MARIADB_* names (see
+                # ../nextcloud/docker-compose.yaml) — the image does not alias
+                # MYSQL_* into existence, so the name here must match what
+                # compose actually passed.
+                password_env: MARIADB_ROOT_PASSWORD
+
+          - to: storage01/dump/immich.sql.gz
+            engine: pg_dump
+            container: immich_postgres
+            auth:
+                username_env: POSTGRES_USER
+                password_env: POSTGRES_PASSWORD
+                database_env: POSTGRES_DB
