@@ -1,4 +1,4 @@
-# Nextcloud — migrated off prd01 (host: media01).
+# Nextcloud — migrated off prd01 (host: storage01).
 #
 # This is the *same instance* that used to run from `docker-compose/nextcloud/`
 # on prd01, moved rather than rebuilt. It was the largest single body of data in

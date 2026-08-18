@@ -1,4 +1,4 @@
-# media01 — storage and media VM (192.168.219.191)
+# storage01 — storage and media VM (192.168.219.191)
 
 Debian 13 (trixie), amd64, 12 vCPU / 20 GiB RAM, 100 GB root on NVMe.
 A QEMU guest on **pve02** (`192.168.219.199`), not a physical machine.
@@ -82,7 +82,7 @@ is the reason this host was built. Nextcloud stays for general file sync.
 ### GPU
 
 pve02 has a GTX 1060 3 GB. It is **not** passed through. PCIe passthrough is
-per-VM and exclusive, so the card would belong to media01 alone — which is
+per-VM and exclusive, so the card would belong to storage01 alone — which is
 acceptable, since every consumer (Jellyfin transcoding, Immich ML) lives in this
 one VM. It is simply not needed yet: 36 host threads cover several software
 1080p transcodes, and iOS clients direct-play most files.
@@ -100,7 +100,7 @@ Two things worth recording, because both were initially got wrong:
 
 ```sh
 git clone https://github.com/marshallku/manifest.git ~/dev/manifest
-cd ~/dev/manifest/docker-compose/media01
+cd ~/dev/manifest/docker-compose/storage01
 
 sudo mkdir -p /var/lib/homelab/{jellyfin/{config,cache},immich/{postgres,thumbs,encoded-video},nextcloud/{db,html,redis,appdata}}
 sudo chown -R 1000:1000 /var/lib/homelab/jellyfin
@@ -119,79 +119,134 @@ can be diffed against a new one. To update it, re-download from
 read the diff, and bump `IMMICH_VERSION` in `.env` deliberately — never leave it
 on the floating `release` tag.
 
-## Nextcloud migration from prd01
+## Nextcloud migration from prd01 — done 2026-08-18
 
-Not a fresh install. The instance, its database and its 19 GB of user data move
-from prd01 (`/mnt/hdd/data/nextcloud`, a single unmirrored disk) onto `tank`.
-Versions are pinned to what prd01 ran — **move first, upgrade later**, so a
-failure is unambiguous.
+Not a fresh install. The instance, its database and its 19 GB of user data were
+moved from prd01 (`/mnt/hdd/data/nextcloud`, a single unmirrored disk) onto
+`tank`. Versions are pinned to exactly what prd01 ran — **move first, upgrade
+later**, so a failure would have been unambiguous. `cloud.marshallku.dev` now
+resolves to this host.
+
+Result: 172 tables, 3 users, 2,836 file records, and `occ files:scan --all`
+reporting **new / updated / removed all zero**. No data was stranded — nothing
+was written to prd01 after the dump, and `MAX(timestamp)` in `oc_activity`
+matched on both sides.
+
+### How it was actually done
+
+**No downtime was needed.** Nextcloud's tables are InnoDB, so
+`mariadb-dump --single-transaction` takes a consistent snapshot of a *running*
+instance. Maintenance mode was never enabled.
+
+**prd01's data could not be read directly.** `/mnt/hdd/data/nextcloud` is
+root-owned and `marshall`'s sudo asks for a password. Docker group membership
+was the way in — bind-mount the source read-only into a throwaway container:
 
 ```sh
-# --- on prd01: quiesce and dump -------------------------------------------
-cd ~/dev/manifest/docker-compose/nextcloud
-docker exec -u www-data nextcloud-app-1 php occ maintenance:mode --on
+# on prd01
+docker run --rm -v /mnt/hdd/data/nextcloud/app:/src:ro -v /home/marshall/.ssh:/ssh:ro \
+  debian:trixie-slim sh -c '
+    apt-get update -qq && apt-get install -y -qq rsync openssh-client
+    rsync -aHAX --numeric-ids --delete \
+      -e "ssh -i /ssh/id_rsa -o StrictHostKeyChecking=no" \
+      --rsync-path="sudo rsync" \
+      --exclude=/data/ /src/ marshall@192.168.219.191:/var/lib/homelab/nextcloud/html/
+  '
+```
+
+`--rsync-path="sudo rsync"` is what preserves uid 33 on the receiving side
+(storage01 has NOPASSWD sudo). `--exclude=/data/` is load-bearing: the data
+directory lives *inside* the application directory on prd01, so without it the
+first pass drops 19 GB onto the 100 GB root disk, where the `/mnt/files` bind
+mount then hides it — invisible, and still consuming the disk.
+
+Three passes, in this order:
+
+| Source | Destination | Why |
+| --- | --- | --- |
+| `app/` minus `data/` | `/var/lib/homelab/nextcloud/html/` | application, NVMe |
+| `app/data/appdata_ocglba52vmd1/` | `/var/lib/homelab/nextcloud/appdata/` | preview cache, NVMe |
+| `app/data/` minus `appdata_*` | `/mnt/files/` | user files, mirror |
+
+rsync (not tar) specifically so re-runs are incremental — the bulk pass ran with
+the instance live at 108 MB/s, and a delta pass at cutover is then near-empty.
+
+Dump and restore:
+
+```sh
+# on prd01 — note MYSQL_ROOT_PASSWORD, not MARIADB_; compose passes the name it
+# was given, and the image does not alias it. --skip-ssl avoids the client
+# refusing the server's self-signed cert.
 docker exec nextcloud-db-1 sh -c \
-  'mariadb-dump -uroot -p"$MARIADB_ROOT_PASSWORD" --single-transaction \
-     --default-character-set=utf8mb4 clouddb' > /tmp/clouddb.sql
+  'mariadb-dump --skip-ssl -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction \
+     --quick --default-character-set=utf8mb4 --routines --triggers --events clouddb' \
+  > clouddb.sql
 
-# --- copy: application dir, then user data --------------------------------
-# `--exclude data/` is load-bearing. The data directory lives *inside* the
-# application directory on prd01, so without it this first pass would drop 19 GB
-# onto a 100 GB root disk, where the /mnt/files bind mount would then hide it —
-# invisible, and still consuming the disk.
-rsync -aHAX --info=progress2 --exclude 'data/' \
-  /mnt/hdd/data/nextcloud/app/  media01:/var/lib/homelab/nextcloud/html/
-
-# The preview cache goes to the NVMe, matching the nested mount in
-# docker-compose.yaml; everything else in data/ goes to the mirror.
-rsync -aHAX --info=progress2 \
-  /mnt/hdd/data/nextcloud/app/data/appdata_ocglba52vmd1/  media01:/var/lib/homelab/nextcloud/appdata/
-rsync -aHAX --info=progress2 --exclude 'appdata_ocglba52vmd1/' \
-  /mnt/hdd/data/nextcloud/app/data/  media01:/mnt/files/
-
-# Run the bulk pass once with the instance still live, then again after
-# maintenance mode is on, so the unavoidable downtime is only the second
-# (near-empty) pass.
-
-# --- on media01: restore --------------------------------------------------
-cp .env.example .env && chmod 600 .env    # MYSQL_* copied from prd01's .env
-docker compose up -d db
+# on storage01 — --protocol=socket matters, see the MYSQL_HOST note in
+# docker-compose.yaml
+docker compose up -d db          # wait for healthy
 docker exec -i nextcloud_db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" clouddb' < clouddb.sql
+  'mariadb --skip-ssl --protocol=socket -uroot -p"$MARIADB_ROOT_PASSWORD" clouddb' < clouddb.sql
 docker compose up -d
-
-# The restored config.php trusts only cloud.marshallku.dev. NEXTCLOUD_TRUSTED_DOMAINS
-# does NOT fix this — the entrypoint applies it at install time, and this is not
-# an install. Without this line the LAN address returns "untrusted domain" and
-# there is no way in until the tunnel is repointed.
-docker exec -u www-data nextcloud_app \
-  php occ config:system:set trusted_domains 1 --value=192.168.219.191
-
-docker exec -u www-data nextcloud_app php occ maintenance:mode --off
-docker exec -u www-data nextcloud_app php occ files:scan --all
 ```
 
 The database credentials must be prd01's, not new ones — the restored
-`config.php` names `clouddb`/`clouduser` and will not be rewritten.
+`config.php` names `clouddb`/`clouduser` and is not rewritten.
 
-### Post-migration, in order
+Then the one step no environment variable can do:
 
-1. **Repoint the tunnel.** `cloud.marshallku.dev` is served through the
-   Cloudflare tunnel from prd01. Nothing in this directory moves it; the
-   ingress has to be changed to `192.168.219.191:8080`. Until then the instance
-   is only reachable on the LAN address added by the `occ` step above.
-2. **Enable Redis.** The container is already running but unused. Add
-   `REDIS_HOST=redis` to `.env` and restart — the image's
-   `config/redis.config.php` reads it through `getenv()` at runtime, so no
-   `config.php` editing is involved. Left out of the migration itself so that
-   the move changes location and nothing else.
-3. **Retire prd01's stack** only once both of the above are done and the
-   instance has been exercised — then remove `docker-compose/nextcloud/` and
-   free `/mnt/hdd/data/nextcloud`.
+```sh
+# The restored config.php trusts only cloud.marshallku.dev. NEXTCLOUD_TRUSTED_DOMAINS
+# does NOT fix this — the entrypoint applies it at install time, and this is not
+# an install. Without this the LAN address returns 400 and there is no way in.
+docker exec -u www-data nextcloud_app \
+  php occ config:system:set trusted_domains 1 --value=192.168.219.191
+docker exec -u www-data nextcloud_app php occ files:scan --all
+```
+
+### The cutover was not a tunnel change
+
+Worth recording, because the assumption cost an hour. `cloud.marshallku.dev` is
+**not** served by a Cloudflare tunnel:
+
+- there is no `cloud.marshallku.dev` DNS record — the wildcard
+  `*.marshallku.dev -> <public IP>` (proxied) catches it;
+- neither legacy `cloudflared` deployment serves it (`cloudflared` has a single
+  `http_status:404` rule; `cloudflared-sssup` carries only maji/irang hosts);
+- the controller-managed `homelab-factory` tunnel has one route, `api-playzy`.
+
+The real path is **wildcard A record -> port forward -> host nginx on prd01**,
+which does Host-based routing. The cutover was therefore one line in
+`/etc/nginx/sites-enabled/marshallku.com`:
+
+```nginx
+server_name cloud.marshallku.dev;
+proxy_pass http://192.168.219.191:8080;   # was :18011, prd01's port
+```
+
+Leaving the old port there produced a 502 that looked exactly like an inbound
+connectivity failure. It is not: **Cloudflare connects to the origin on 443**,
+so verifying the origin on port 80 proves nothing. Reproduce with SNI —
+`curl -k --resolve host:443:<origin> https://host/status.php` — before
+concluding anything about the network.
+
+### Still open
+
+1. **Enable Redis.** The container runs but is unused. Add `REDIS_HOST=redis` to
+   `.env` and restart — `config/redis.config.php` reads it through `getenv()` at
+   runtime, so no `config.php` editing. Deliberately left out of the migration
+   so the move changed location and nothing else.
+2. **Retire prd01's stack.** `docker-compose/nextcloud/` is now a stale,
+   divergent copy kept as a rollback path. Once this instance has been exercised
+   for a few days, delete it and free `/mnt/hdd/data/nextcloud`.
+3. **`bon/files` is owned by uid 1000**, so `occ files:scan` reports one error
+   for that user. This is inherited, not caused by the move — the same scan
+   fails identically on prd01. Fixing it means chowning ~1,586 files, so it is
+   left as a deliberate decision rather than a silent cleanup.
 
 The preview cache is *not* on this list: the nested mount in
-`docker-compose.yaml` already places `appdata_ocglba52vmd1` on the NVMe from the
-first start, and the migration copies it there directly.
+`docker-compose.yaml` places `appdata_ocglba52vmd1` on the NVMe from the first
+start, and the migration copied it there directly.
 
 ## Host-side notes (pve02)
 

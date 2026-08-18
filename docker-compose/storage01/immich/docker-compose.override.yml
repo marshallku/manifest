@@ -1,4 +1,4 @@
-# Immich overrides (host: media01).
+# Immich overrides (host: storage01).
 #
 # `docker-compose.yml` next to this file is vendored verbatim from upstream:
 #

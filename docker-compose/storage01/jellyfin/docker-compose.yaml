@@ -1,4 +1,4 @@
-# Jellyfin — media server (host: media01).
+# Jellyfin — media server (host: storage01).
 #
 # The library lives on `tank`, a ZFS mirror of two ST8000DM004 drives. Those are
 # DM-SMR: sustained *sequential* writes are fine (measured 129-161 MB/s across a
