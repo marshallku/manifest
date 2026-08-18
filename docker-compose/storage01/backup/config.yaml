@@ -145,10 +145,14 @@ jobs:
       dumps:
           - to: n8n/dump/database.sqlite
             engine: sqlite
-            # No container: the file is uid 1000 / mode 644 on the prd01 host, so
-            # the runner reads it directly without any privilege escalation.
-            # Requires `sqlite3` on prd01 (apt, one package — deliberately
-            # installed rather than fetched at backup time).
+            # No container and nothing installed on the source. The file is
+            # uid 1000 / mode 644 on the prd01 host, so the runner reads it
+            # without privilege escalation, and the work is done by a short
+            # Python program piped to the host's existing `python3` — the
+            # `sqlite3` module is stdlib, so the source stays as dumb as an SSH
+            # endpoint. Verified on prd01: python3 3.13.5, sqlite 3.46.1, and
+            # `VACUUM INTO` through a read-only connection to a live WAL
+            # database yields a copy that passes `PRAGMA integrity_check`.
             path: /mnt/hdd/data/n8n/database.sqlite
             # VACUUM INTO takes a read transaction and writes a consistent,
             # compacted copy while n8n keeps running. `.backup` would also work;

@@ -141,7 +141,7 @@ right flags differ per engine and per deployment:
 | `mysqldump` / `mariadb-dump` | `--single-transaction` (valid because these schemas are InnoDB), charset, and sometimes transport flags — the Nextcloud database needs `--protocol=socket --skip-ssl`, since the client honours `MYSQL_HOST` from the environment and would otherwise connect over TCP to itself where only `root@localhost` exists |
 | `mongodump` | archive/compression flags and credentials, which the official image enforces once `MONGO_INITDB_ROOT_USERNAME` is set |
 | `pg_dump` | user, database and password, all of which live in the container's environment |
-| `sqlite` | a `path` instead of a `container`, and a `method`. n8n's 5.8 GB store is SQLite in WAL mode: the main file, `-wal` and `-shm` are only meaningful together and only at an instant no writer is mid-commit, so it is excluded from `paths` and copied with `VACUUM INTO` — consistent against a running n8n, and compacting as a side effect |
+| `sqlite` | a `path` instead of a `container`, a `method`, and a `tmp`. n8n's 5.8 GB store is SQLite in WAL mode: the main file, `-wal` and `-shm` are only meaningful together and only at an instant no writer is mid-commit, so it is excluded from `paths` and copied with `VACUUM INTO` — consistent against a running n8n, and compacting as a side effect. Nothing is installed for this: the runner pipes a short program to the source's existing `python3`, whose `sqlite3` module is stdlib |
 
 Credentials are read from the container's own environment (`*_env` fields)
 rather than duplicated into a secret file. **The variable names must match what
@@ -185,10 +185,14 @@ Deliberately installed once rather than fetched at backup time — a backup that
 depends on the network and a package registry at 3 a.m. is a backup that fails on
 the night it is needed.
 
+The list is short on purpose. A source host should be reachable, not
+provisioned: no agent, no bespoke binary, nothing to keep in sync across
+machines. Where source-side work is unavoidable — `rsync --server` for files,
+a consistent read for SQLite — it runs on what the distribution already ships.
+
 | Host | Needs | Why |
 | --- | --- | --- |
 | prd01 | the `/etc/sudoers` rule above | read root-owned files without a password |
-| prd01 | `sqlite3` (apt) | `VACUUM INTO` for the n8n database. The file is uid 1000 / mode 644 on the host, so this needs no privilege — only the binary |
 | prd01 | storage01's public key in `~/.ssh/authorized_keys` | pull direction; the earlier migration only opened prd01 → storage01 |
 | storage01 | `python3` + `pyyaml`, `rsync`, `attr` | the runner itself; all present |
 | pve02 | a forced-command key permitting only `zfs snapshot` | see "Retention" above |
