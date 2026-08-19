@@ -1,6 +1,11 @@
 services:
   db:
     image: mysql:9.0.1
+    # Declared rather than left to Compose's project-derived naming, because
+    # the backup runner addresses this container by name
+    # (backup/config.yaml). The value is what Compose already generates, so
+    # naming it changes nothing at runtime and makes the reference a contract.
+    container_name: dongjoome-db-1
     restart: unless-stopped
     env_file:
       - .env

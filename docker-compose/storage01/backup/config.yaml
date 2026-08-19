@@ -37,7 +37,16 @@ destination:
     #     VM cannot erase backup history. That is why no retention policy
     #     appears in this file.
     snapshot:
-        host: pve02
+        # The LAN address, not the name: `pve02` resolves through the search
+        # domain to pve02.marshallku.dev, which is a Cloudflare-proxied record
+        # pointing at Cloudflare, not at the hypervisor.
+        #
+        # The user is `backupsnap`, an unprivileged account whose key carries a
+        # forced command (/usr/local/sbin/backup-snapshot) that accepts only a
+        # snapshot NAME and pins the dataset itself, backed by
+        # `zfs allow -u backupsnap snapshot tank/backup/hosts` — the delegation
+        # grants creation and nothing else.
+        host: backupsnap@192.168.219.199
         dataset: tank/backup/hosts
 
 sources:

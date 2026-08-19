@@ -1,11 +1,73 @@
 # backup — declarative homelab backup (host: storage01)
 
-`config.yaml` declares what gets backed up. A Python runner on storage01 reads
-it, pulls from each source, and — only on a fully successful run — asks pve02 to
+`config.yaml` declares what gets backed up. The runner in `runner/` reads it,
+pulls from each source, and — only on a fully successful run — asks pve02 to
 snapshot the destination dataset.
 
 Nothing here moves bytes itself. The runner assembles and supervises
 `rsync`, `mongodump` / `mysqldump` / `pg_dump` / `mariadb-dump`, and `kubectl exec`.
+
+## Running it
+
+```sh
+python3 -m runner --list          # what would run
+python3 -m runner --dry-run       # print every command, change nothing
+python3 -m runner --only blog     # one job; never snapshots (a partial run
+                                  # is not a state worth freezing)
+python3 -m runner                 # everything, then snapshot if all of it worked
+```
+
+Exit codes: `0` all good · `1` a job (or the snapshot) failed · `2` the config
+is invalid · `3` another run holds the lock. Progress goes to stderr, so
+`--json` on stdout is safe to pipe. `run.json` at the destination root records
+the same summary, and lands inside the snapshot.
+
+Only stdlib plus `pyyaml`. `tests/` is hermetic — no ssh, no network, no
+docker — so `pytest` runs anywhere:
+
+```sh
+python3 -m pytest tests/
+```
+
+### What the runner refuses to do
+
+Every one of these is a case where continuing would produce a backup that
+looks fine:
+
+| Situation | What happens |
+| --- | --- |
+| a `precondition` container is in any state other than `created`/`exited`/`dead` | job fails — `restarting` and `paused` are as live as `running`, and an unrecognised state fails closed |
+| the precondition could not be *checked* at all (host down, docker socket denied) | job fails; an unreachable host is not evidence that a container is stopped |
+| a dump process exits nonzero, or produces no bytes | nothing is written to the real path — the `.part` file is removed |
+| a gzip the runner produced does not pass `gzip -t` | same |
+| the SQLite temp file already exists on the source | job fails **and the file is left alone**, because the refusal exists so that a human looks at it |
+| the SQLite temp file could not be removed afterwards | job fails, though the pulled dump is kept — the leftover would otherwise surface as an unexplained failure tomorrow night |
+| any job at all failed | no snapshot |
+| two jobs claim the same top-level directory | the config is rejected before anything runs |
+
+### Where the credentials are
+
+Nowhere in this repo, and nowhere in the runner. `config.yaml` names an
+environment variable *inside a container*; the dump snippet references it as a
+shell variable, so the container's own shell expands it:
+
+```sh
+docker exec nextcloud_db sh -c 'export MYSQL_PWD="${MARIADB_ROOT_PASSWORD:?...}"; exec mariadb-dump ...'
+```
+
+The value never enters an argv this process builds, never crosses ssh, and
+never reaches a log. It does not hide anything from someone who can already
+read the container's environment — it removes the runner, its logs, and the
+source's process table from the list of places it can leak. `mongodump` is the
+exception: it has no password environment variable, so its credential is an
+argv *inside the container*.
+
+Nothing is piped on the far side, either. An earlier design ran `dump | gzip`
+there and relied on `set -o pipefail` to catch a dump that died halfway —
+which does not work, because `blog-database`'s `/bin/sh` is dash, where that is
+an illegal option. A truncated dump would have become a perfectly valid gzip.
+Compression now happens on the receiving side, where this process owns both
+ends of the pipe and checks both exit codes.
 
 ## Why pull
 
@@ -195,7 +257,33 @@ a consistent read for SQLite — it runs on what the distribution already ships.
 | prd01 | the `/etc/sudoers` rule above | read root-owned files without a password |
 | prd01 | storage01's public key in `~/.ssh/authorized_keys` | pull direction; the earlier migration only opened prd01 → storage01 |
 | storage01 | `python3` + `pyyaml`, `rsync`, `attr` | the runner itself; all present |
-| pve02 | a forced-command key permitting only `zfs snapshot` | see "Retention" above |
+| pve02 | the `backupsnap` account described below | see "Retention" above |
+
+### The snapshot account on pve02
+
+An unprivileged `backupsnap` user, not root. Its `authorized_keys` entry carries
+a forced command, and ZFS delegation grants creation and nothing else:
+
+```sh
+zfs allow -u backupsnap snapshot tank/backup/hosts
+```
+
+`/usr/local/sbin/backup-snapshot` accepts a snapshot *name* and pins the dataset
+itself, so the client cannot choose one. Both halves were checked rather than
+assumed — `id`, `zfs destroy …`, and a name with a `;` in it are all refused
+over ssh, and running `zfs destroy` or snapshotting a different dataset as
+`backupsnap` directly on pve02, bypassing ssh entirely, is refused by the
+delegation.
+
+Root's `authorized_keys` on a PVE node is a symlink into `/etc/pve/priv/`, which
+PVE manages and rewrites; an entry there would not have survived.
+
+### Known gap: the `infisical` job cannot run yet
+
+storage01 has no `kubectl` and no kubeconfig, and `marshall@prd01` cannot read
+`/etc/rancher/k3s/k3s.yaml` (mode 0600, root). The job therefore fails on every
+run — deliberately, rather than skipping — which also means no snapshot is
+taken. Fixing it needs a scoped ServiceAccount token in k3s.
 
 ## Restore
 
