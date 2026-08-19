@@ -1,0 +1,33 @@
+# gitgarden — GitHub contribution-graph renderer.
+#
+# Moved off prd01's docker-compose + nginx vhost. It was the last public service
+# still reaching the internet through the host nginx; here it goes out over the
+# Cloudflare Tunnel like every other factory app, so the home IP is not in its
+# path at all.
+#
+# The image is a single binary with no -web/-api split, so `image` is the
+# complete reference rather than the prefix the chart's examples use.
+app: gitgarden
+
+# The GHCR package is public, so blank out the chart's default pull secret —
+# otherwise the Deployment references a `ghcr-secret` this namespace has no
+# reason to hold.
+imagePullSecret: ""
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/gitgarden:latest
+    port: 18085
+    host: gitgarden.marshallku.dev
+    healthPath: /
+    env:
+      # The binary binds $HOST:$PORT; without HOST it listens on loopback only
+      # and the kubelet probe (which connects over the pod IP) never succeeds.
+      - name: HOST
+        value: "0.0.0.0"
+      - name: PORT
+        value: "18085"
+    secretEnv:
+      # Read-only, scopeless GitHub token. Supplied by the SealedSecret in
+      # kubernetes/service/gitgarden/, which renders to `gitgarden-secret`.
+      - GITHUB_TOKEN
