@@ -10,8 +10,11 @@ services:
       # DNS
       - "53:53/tcp"
       - "53:53/udp"
-      # Web UI
-      - "3080:3000/tcp"
+      # Web UI. AdGuard serves the first-run wizard on :3000 and moves the UI to
+      # http.address (here 8888) once configured, so :3000 has no listener on a
+      # configured instance. Publishing it anyway left docker-proxy holding 3080
+      # while nothing answered — connections established and then hung (HTTP 000),
+      # which is markedly harder to diagnose than a refused port. Removed 2026-08-23.
       - "8888:8888/tcp"
       # DNS-over-TLS
       - "853:853/tcp"
