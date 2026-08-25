@@ -19,9 +19,14 @@ infisical/
 │   ├── service-postgres.yaml               # headless, 5432
 │   ├── service-redis.yaml                  # ClusterIP, 6379
 │   └── service-infisical.yaml              # ClusterIP, 8080
-└── secrets/
-    ├── secret.yaml.example                 # template (do not commit real values)
-    └── sealed-secret.yaml                  # generated via kubeseal (commit this)
+├── secrets/
+│   ├── secret.yaml.example                 # template (do not commit real values)
+│   └── sealed-secret.yaml                  # generated via kubeseal (commit this)
+└── rbac/                                   # scoped API access for the backup runner
+    ├── README.md                           # scope verification + token handover
+    ├── serviceaccount-backup-runner.yaml   # account + its token Secret (order matters)
+    ├── role-backup-runner.yaml             # exec into infisical-postgres-0, nothing else
+    └── rolebinding-backup-runner.yaml
 ```
 
 ## Bootstrap

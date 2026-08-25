@@ -1,0 +1,38 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-runner
+  namespace: infisical
+  labels:
+    app.kubernetes.io/name: backup-runner
+    app.kubernetes.io/component: backup
+    app.kubernetes.io/part-of: infisical
+# Exactly what the runner's one call needs, and nothing beyond it:
+#
+#     kubectl exec -n infisical infisical-postgres-0 -c postgres -- <pg_dump>
+#
+#   pods  get   kubectl fetches the pod first to resolve the container name.
+#               Deliberately no `list` — the runner names the pod outright, so
+#               it never enumerates the namespace and cannot discover anything.
+#   pods/exec   the dump itself.
+#
+# Both are pinned to the single pod by `resourceNames`. That is viable only
+# because a StatefulSet pod name is stable (`<name>-0`); a Deployment's random
+# suffix could not be pinned this way, and the Role would have to widen to the
+# whole namespace.
+#
+# `resourceNames` is normally ignored on a `create` verb, because the object
+# name does not exist yet at authorization time. `pods/exec` is the exception:
+# it is a subresource of an already-named pod, so the name is in the request
+# path and RBAC does enforce it. That behaviour is load-bearing here — without
+# it this Role would grant exec into every pod in the namespace — so it is
+# verified against the live cluster rather than assumed. See rbac/README.md.
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: ["infisical-postgres-0"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    resourceNames: ["infisical-postgres-0"]
+    verbs: ["create"]
