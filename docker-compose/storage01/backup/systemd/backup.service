@@ -1,0 +1,72 @@
+# The nightly backup run. Installed on storage01; see ../README.md.
+#
+# The runner was written in 2026-08 and left unscheduled until 2026-09-01. In
+# those thirteen days the homelab had exactly one backup and nothing said so.
+# That is the failure this unit and its timer exist to close, so the parts that
+# make silence impossible are the parts to preserve.
+
+[Unit]
+Description=Homelab backup collection
+Documentation=https://github.com/marshallku/manifest/blob/master/docker-compose/storage01/backup/README.md
+
+# destination.root lives on the virtiofs share from pve02's tank/backup/hosts.
+# It is mounted `nofail`, so without this the unit starts happily on a boot
+# where the share never appeared, the runner fails on a missing root, and the
+# only symptom is a missing heartbeat a day later.
+RequiresMountsFor=/mnt/backup
+
+# Every source but storage01 itself is reached over ssh, and Persistent=true
+# means a catch-up run can fire seconds after boot.
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# Owns /mnt/backup/hosts, is in the `docker` group for the local dumps, and
+# holds the ssh keys for prd01 and backupsnap@pve02. systemd derives HOME from
+# the user database, so `ssh` finds ~/.ssh/{id_ed25519,known_hosts} without an
+# agent — the runner passes BatchMode=yes, which forbids prompting but does not
+# by itself establish host trust, so known_hosts must be pre-populated.
+User=marshall
+Group=marshall
+
+# Absolute rather than %h: for a *system* unit %h resolves to the manager's
+# home (/root), not to User='s. If the checkout moves, this line moves with it.
+WorkingDirectory=/home/marshall/dev/manifest/docker-compose/storage01/backup
+
+# Both credentials are root:root 0600 on disk and are never readable by
+# `marshall` outside this unit — systemd copies them into a private per-run
+# directory owned by the service user. That is why the files are not simply
+# chowned: the runner's own rule is that a credential's blast radius stops at
+# the process that needs it.
+LoadCredential=kubeconfig:/etc/backup/kubeconfig
+LoadCredential=heartbeat:/etc/backup/heartbeat.curl
+
+# The `infisical` job dumps infisical-postgres-0 through `kubectl exec`, as the
+# scoped backup-runner ServiceAccount (kubernetes/infisical/rbac/). Without
+# this the job fails, and one failed job means the runner takes no snapshot —
+# so the whole run's versioning is lost, not just Infisical's.
+Environment=KUBECONFIG=%d/kubeconfig
+
+ExecStart=/usr/bin/python3 -m runner
+
+# The dead-man's switch. systemd runs ExecStartPost only when ExecStart exited
+# 0, so success needs no branching and failure needs no handling: a failed run
+# and a run that never happened both produce the same missing heartbeat, and
+# Uptime Kuma alerts on the silence. An alert-on-failure design cannot observe
+# a process that does not exist — which is precisely what went wrong here.
+#
+# -K keeps the push token out of argv, matching the invariant the runner holds
+# for database passwords. A heartbeat that cannot be delivered fails the unit:
+# an undelivered heartbeat is indistinguishable from a dead switch, and the
+# journal is then the only place that says which of the two it was.
+ExecStartPost=/usr/bin/curl --fail --silent --show-error --max-time 10 --config %d/heartbeat
+
+# A run is bounded by the runner's own per-operation timeouts (6h per rsync,
+# 2h per dump, sequential). This is a backstop against a hang, set well above
+# any observed run — 2026-08-19 collected everything in 62 seconds.
+TimeoutStartSec=8h
+
+[Install]
+WantedBy=multi-user.target

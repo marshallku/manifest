@@ -70,7 +70,8 @@ Verified end to end on 2026-08-25 with a kubeconfig built from the token:
 
 ## Hand the token to the runner
 
-Not yet done — recorded here so the remaining step is unambiguous.
+Done 2026-09-01. Kept here because it is the procedure to repeat if the token is
+ever rotated or the runner moves hosts.
 
 ```sh
 kubectl -n infisical get secret backup-runner-token -o jsonpath='{.data.token}'    | base64 -d
@@ -82,6 +83,15 @@ place it at `/etc/backup/kubeconfig` (mode `0600`) on the host that runs
 `kubectl` for the runner, and point the job at it with `KUBECONFIG`. The runner
 never puts the credential in argv — the same invariant it keeps for database
 passwords.
+
+On storage01 the file is `root:root`, unreadable by the `marshall` account the
+runner runs as; `backup.service` passes it in with `LoadCredential=` so that a
+private copy exists only for the duration of a run. `kubectl` itself came from
+the pkgs.k8s.io v1.34 apt repo, matching the cluster's minor.
+
+The scope table above was re-verified against the live cluster from storage01
+with this kubeconfig on 2026-09-01: all eight checks matched, and `pg_dump
+--version` ran inside `infisical-postgres-0`.
 
 ## Then remove the admin credential
 

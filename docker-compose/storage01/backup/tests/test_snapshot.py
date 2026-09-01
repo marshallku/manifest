@@ -29,3 +29,23 @@ def test_the_request_carries_only_the_name():
 def test_a_name_that_is_not_a_stamp_is_refused_before_it_is_sent():
     with pytest.raises(JobError, match="not of the form"):
         snapshot.argv_for(CONFIG, "backup-20260819T030405Z; zfs destroy -r tank")
+
+
+def test_a_snapshot_the_pool_never_took_is_not_reported_as_success(tmp_path):
+    """The ssh exit code comes from pve02's forced command, not from the pool."""
+    with pytest.raises(JobError, match="does not exist"):
+        snapshot.confirm(tmp_path, "backup-20260819T030405Z")
+
+
+def test_confirmation_looks_under_the_destination_root(tmp_path):
+    name = "backup-20260819T030405Z"
+    (tmp_path / ".zfs" / "snapshot" / name).mkdir(parents=True)
+    snapshot.confirm(tmp_path, name)  # does not raise
+
+
+def test_a_file_where_the_snapshot_should_be_is_not_a_snapshot(tmp_path):
+    name = "backup-20260819T030405Z"
+    (tmp_path / ".zfs" / "snapshot").mkdir(parents=True)
+    (tmp_path / ".zfs" / "snapshot" / name).write_text("")
+    with pytest.raises(JobError, match="does not exist"):
+        snapshot.confirm(tmp_path, name)

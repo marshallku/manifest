@@ -1,0 +1,28 @@
+# When the nightly run fires. Installed on storage01; see ../README.md.
+
+[Unit]
+Description=Nightly homelab backup
+Documentation=https://github.com/marshallku/manifest/blob/master/docker-compose/storage01/backup/README.md
+
+[Timer]
+# 03:00 local time. Late enough that Immich imports and Jellyfin playback have
+# settled, early enough to finish long before anyone looks at the result.
+OnCalendar=*-*-* 03:00:00
+
+# Fire on boot if the window was missed. storage01 goes down whenever pve02
+# does — it did today, for the RAM install — and a backup that silently skips
+# the nights a host was rebooted is a backup with holes exactly where the
+# interesting events are.
+#
+# Note this is one catch-up run, not one per missed night; nothing is gained by
+# replaying a week of nights against the same live sources anyway.
+Persistent=true
+
+# Nothing else contends at 03:00, so this is not load-spreading — it keeps the
+# start time from being a fixed, publicly predictable moment. It is also the
+# reason the Uptime Kuma window must exceed 24h: consecutive completions can
+# legitimately be up to 24h15m plus the run's own duration apart.
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

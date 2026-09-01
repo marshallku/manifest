@@ -8,6 +8,14 @@ and no compromise of this VM can erase backup history.
 The snapshot is caused by a completed collection rather than by an independent
 timer, because a timer that fires mid-rsync preserves a torn backup — worst
 exactly for the jobs where a dump and its files have to agree.
+
+Creation is then *confirmed* rather than assumed. The request is one ssh call
+whose only evidence of success is an exit code, and an exit code is produced by
+the forced command on pve02 — not by the pool. A forced command that was
+replaced, renamed or turned into a no-op would keep exiting 0 while nothing is
+ever frozen, and every run would look healthy. Since `destination.root` is the
+dataset's own mountpoint, `.zfs/snapshot/<name>` answers the question locally
+and without any additional privilege.
 """
 
 from __future__ import annotations
@@ -15,6 +23,7 @@ from __future__ import annotations
 import re
 import shlex
 from datetime import UTC, datetime
+from pathlib import Path
 
 from .config import Config
 from .errors import JobError
@@ -52,4 +61,30 @@ def take(config: Config, *, log, dry_run: bool = False) -> dict:
     result = execute.run(argv, timeout=120)
     if not result.ok:
         raise JobError(f"snapshot request failed (exit {result.returncode}): {result.stderr.strip()}")
-    return {"name": name, "dataset": config.snapshot_dataset, "host": config.snapshot_host}
+    confirm(config.root, name)
+    return {
+        "name": name,
+        "dataset": config.snapshot_dataset,
+        "host": config.snapshot_host,
+        "confirmed_at": str(snapshot_dir(config.root, name)),
+    }
+
+
+def snapshot_dir(root: Path, name: str) -> Path:
+    return root / ".zfs" / "snapshot" / name
+
+
+def confirm(root: Path, name: str) -> None:
+    """Fail unless the snapshot the hypervisor reported creating is really there.
+
+    Fails closed on an unreadable or absent `.zfs`, rather than downgrading to
+    "could not check". A run that cannot see the snapshot directory has no
+    evidence its history is being kept, and reporting that as success is the
+    exact failure this function exists to catch.
+    """
+    if not snapshot_dir(root, name).is_dir():
+        raise JobError(
+            f"pve02 reported creating {name} but {snapshot_dir(root, name)} does not exist. "
+            f"Either the forced command is not snapshotting {root}'s dataset, or this host "
+            f"cannot see `.zfs` (the destination must be the dataset's own mountpoint)."
+        )

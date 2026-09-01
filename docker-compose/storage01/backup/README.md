@@ -278,12 +278,87 @@ delegation.
 Root's `authorized_keys` on a PVE node is a symlink into `/etc/pve/priv/`, which
 PVE manages and rewrites; an entry there would not have survived.
 
-### Known gap: the `infisical` job cannot run yet
+### Cluster access for the `infisical` job
 
-storage01 has no `kubectl` and no kubeconfig, and `marshall@prd01` cannot read
-`/etc/rancher/k3s/k3s.yaml` (mode 0600, root). The job therefore fails on every
-run — deliberately, rather than skipping — which also means no snapshot is
-taken. Fixing it needs a scoped ServiceAccount token in k3s.
+The job dumps `infisical-postgres-0` with `kubectl exec`, so storage01 needs
+`kubectl` and a credential. It authenticates as the `backup-runner`
+ServiceAccount, whose Role reaches that one pod and nothing else — see
+[`kubernetes/infisical/rbac/`](../../../kubernetes/infisical/rbac/README.md) for
+the account and how to verify its scope.
+
+Closed on 2026-09-01. Until then storage01 had neither, so the job failed on
+every run — deliberately, rather than skipping — and one failed job means **no
+snapshot at all**. The cost of leaving it open was therefore not "no Infisical
+backup" but "no versioning of anything", which is what actually happened: the
+last snapshot before that date was thirteen days old.
+
+## Installing the schedule
+
+`systemd/` holds the unit and its timer. Both are commented; read them rather
+than this section for the reasoning behind each directive.
+
+```sh
+sudo install -m 0644 systemd/backup.service systemd/backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now backup.timer
+systemctl list-timers backup.timer
+```
+
+Two root-only credential files are expected. They are `0600 root:root` and are
+**not** readable by `marshall`; systemd hands each run a private copy through
+`LoadCredential=`, so the value never widens beyond the process that needs it.
+
+| Path | Contents |
+| --- | --- |
+| `/etc/backup/kubeconfig` | built from the `backup-runner` token, server `https://192.168.219.100:6443` |
+| `/etc/backup/heartbeat.curl` | one line: `url = "http://192.168.219.127:3001/api/push/<token>"` |
+
+### The dead-man's switch
+
+The runner sat unscheduled from 2026-08-19 to 2026-09-01 and nothing said so.
+That is the failure mode this guards, and it is the reason the alarm is
+**silence** rather than failure: a design that alerts when the run fails cannot
+observe a run that never starts.
+
+`ExecStartPost=` fires only when `ExecStart` exited 0, so the unit pushes a
+heartbeat exactly on success and needs no branching. A failed run and a run that
+never happened are indistinguishable from the monitor's side, which is correct —
+both mean the backup is not happening.
+
+Create a **Push** monitor on pi01's Uptime Kuma (`:3001`) and put its URL in
+`/etc/backup/heartbeat.curl`:
+
+| Field | Value | Why |
+| --- | --- | --- |
+| Heartbeat Interval | `90000` (25 h) | must exceed 24 h + the timer's 15 min jitter + the run's own duration. A 2026-09-01 full run took 7m29s. |
+| Retries | `2` | |
+| Heartbeat Retry Interval | `3600` (1 h) | |
+
+So an unusually long run only moves the monitor to PENDING (no notification),
+while real silence reaches DOWN at about 27 hours — inside two nights either
+way. **Attach a notification channel**: a monitor that goes DOWN into an empty
+notification list reproduces the original failure exactly.
+
+`curl -K` keeps the push token out of `argv`, the same invariant the runner
+holds for database passwords. A heartbeat that cannot be delivered fails the
+unit, because an undelivered heartbeat and a dead switch look identical from
+outside; the journal is what distinguishes them.
+
+### What the heartbeat does and does not prove
+
+It proves the run happened and every job reported success. It does **not** prove
+the backup is useful:
+
+- A `paths` job whose source is unexpectedly empty still succeeds. The runner
+  logs `… is empty; check whether the excludes are right` and moves on — that
+  warning is the only signal, and nothing reads warnings at 3 a.m.
+- No job asserts a minimum size, so a source that quietly stopped producing
+  data backs up cleanly forever.
+
+Neither is hypothetical: `blog/files` has copied 0 bytes on every run so far,
+which is correct today (the Mongo datadir is excluded and `/config` is empty)
+and would look identical if it were wrong. Restore drills are what close this,
+and they are not automated yet — see "Still missing".
 
 ## Restore
 
@@ -325,7 +400,22 @@ manifest.
 ## Still missing
 
 **Offsite.** `tank` is one mirror in one machine and `vault` is a second disk in
-the same machine. Neither survives fire, theft, or a mistake that reaches both.
-The database dumps total roughly 1 GB, so an offsite copy of at least those costs
-almost nothing — this is the largest remaining gap in the 3-2-1 story, not a
-nice-to-have.
+the same machine — and as of 2026-09-01 `vault` is still empty, so there is not
+even a second copy yet. Neither survives fire, theft, or a mistake that reaches
+both. Everything worth keeping is about 260 GB, so an offsite copy costs a few
+thousand won a month — this is the largest remaining gap in the 3-2-1 story, not
+a nice-to-have.
+
+**A restore that someone has actually performed.** Every job records the exact
+command that puts it back, and none of those commands has been run. A backup
+nobody has restored is a hypothesis, and the heartbeat cannot test it — see
+"What the heartbeat does and does not prove".
+
+**Per-job minimum expectations.** Nothing distinguishes "this source is
+legitimately empty" from "this source stopped producing data". `rsync --delete`
+is deliberately not used, so a vanished source cannot destroy the stored copy;
+it just stops updating it, silently and forever.
+
+**vzdump.** This runner backs up application state, not the machines. pve02 has
+zero vzdump jobs, so losing a VM means rebuilding it by hand — a gap that grows
+as more workloads land on the one host.
