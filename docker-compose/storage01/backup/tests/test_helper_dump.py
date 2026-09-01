@@ -8,6 +8,7 @@ what it prints is therefore a test here rather than a comment there.
 
 import hashlib
 import json
+import pathlib
 
 import pytest
 
@@ -256,3 +257,26 @@ def test_a_piped_program_dump_has_no_artifact_digest_to_confirm(config, tmp_path
     pulled = tmp_path / "n8n.sqlite.part"
     pulled.write_bytes(b"anything")
     jobs._confirm_artifact(parsed.jobs[0].dumps[0], {}, pulled)  # does not raise
+
+
+def test_the_stored_copys_digest_is_recorded_for_later_verification(config, monkeypatch, tmp_path):
+    """Nothing can check `vault` or an offsite copy against a digest that was
+    computed, used once, and thrown away."""
+    calls = record_calls(monkeypatch)
+    stored_token(config)
+    pulled = {}
+
+    def fake_check(argv, what, **kwargs):
+        if argv[0] == "rsync":
+            target = pathlib.Path(argv[-1])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(COPY)
+            pulled["yes"] = True
+        return execute.Result(argv=argv, returncode=0, stdout=payload(), stderr="")
+
+    monkeypatch.setattr(execute, "check", fake_check)
+    report = jobs._take_sqlite_dump(
+        config, config.jobs[0], config.jobs[0].dumps[0], log=lambda _m: None, dry_run=False
+    )
+    assert pulled and report["sha256"] == COPY_SHA
+    assert report["paired_sha256"] == TOKEN_SHA

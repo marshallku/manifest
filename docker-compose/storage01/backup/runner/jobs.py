@@ -379,6 +379,12 @@ def _take_sqlite_dump(config: Config, job: Job, spec: DumpSpec, *, log: Log, dry
         "bytes": stats["bytes"],
         "source_bytes": stats["source_bytes"],
         "integrity_check": stats["integrity_check"],
+        # Recorded only where it already exists. A helper reports the digest of
+        # what it wrote, so keeping it costs nothing and gives the `vault`
+        # replica and the offsite copy something to be checked against later.
+        # The piped-program path has no source-side digest, and hashing n8n's
+        # 5.8 GB nightly to invent one is a cost nobody has asked for yet.
+        "sha256": stats.get("sha256"),
         "paired_file": spec.paired_file,
         "paired_sha256": _confirm_pairing(config, spec, stats),
         "restore": manifest.restore_dump(src, spec, config.root),
