@@ -63,6 +63,15 @@ class DumpSpec:
     path: str | None = None
     method: str | None = None
     tmp: str | None = None
+    # sqlite only, and only when the database is unreadable without privilege:
+    # the absolute path of a root helper on the source that produces the copy
+    # and reports it as JSON. See runner/sqlite_dump.py for the contract.
+    helper: str | None = None
+    # sqlite+helper only. A destination-relative artifact whose sha256 must
+    # equal the `paired_sha256` the helper reports. It is how a dump and the
+    # separately-rsynced file it must be restored alongside are proven to
+    # belong together.
+    paired_file: str | None = None
 
     @property
     def self_compressed(self) -> bool:
@@ -258,6 +267,8 @@ def _parse_dump(job: str, raw: Any) -> DumpSpec:
         path=raw.get("path"),
         method=raw.get("method"),
         tmp=raw.get("tmp"),
+        helper=raw.get("helper"),
+        paired_file=raw.get("paired_file"),
     )
 
     if engine == "sqlite":
@@ -269,6 +280,14 @@ def _parse_dump(job: str, raw: Any) -> DumpSpec:
             raise ConfigError(f"job {job!r}: a sqlite dump needs an absolute `tmp` on the source")
         if dest.endswith(".gz"):
             raise ConfigError(f"job {job!r}: a sqlite dump is a database file, not a compressed stream")
+        if spec.helper is not None and not spec.helper.startswith("/"):
+            raise ConfigError(f"job {job!r}: `helper` must be an absolute path on the source")
+        if spec.paired_file is not None:
+            if spec.helper is None:
+                raise ConfigError(f"job {job!r}: `paired_file` only means something with a `helper`")
+            # Checked with the same rule as `to:`, because it is resolved
+            # against destination.root exactly like one.
+            _check_dest(job, spec.paired_file)
     else:
         if not spec.container and not spec.pod:
             raise ConfigError(f"job {job!r}: dump {dest!r} needs a container (or pod, for kubectl)")

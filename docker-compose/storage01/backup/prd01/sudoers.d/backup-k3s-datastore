@@ -1,0 +1,15 @@
+# Install to /etc/sudoers.d/backup-k3s-datastore, root:root 0440, and validate
+# with `visudo -cf` BEFORE placing it. A syntax error in a sudoers file can
+# lock every sudo user out of the host.
+#
+# The grant is narrow because the script it names is narrow: it takes no
+# arguments and reads no input, so there is no argument to smuggle anything
+# through. Widening this to python3 or sqlite3 instead would be arbitrary root
+# code execution — strictly worse than the send-only rsync grant this host
+# already carries.
+#
+# The safety of this line depends on /usr/local/sbin/k3s-datastore-snapshot
+# being root-owned and not writable by group or other. If `marshall` can modify
+# that file, this grant becomes a root shell. Verify after every install:
+#   stat -c '%U:%G %a' /usr/local/sbin/k3s-datastore-snapshot   # root:root 755
+marshall ALL=(root) NOPASSWD: /usr/local/sbin/k3s-datastore-snapshot

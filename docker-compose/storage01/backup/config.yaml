@@ -227,6 +227,57 @@ jobs:
                 password_env: POSTGRES_PASSWORD
                 database_env: POSTGRES_DB
 
+    # ----------------------------------------------------------- k3s server
+    # The cluster's identity, which nothing else here covers and git cannot.
+    #
+    # `marshallku/manifest` is a PUBLIC repository holding 8 SealedSecrets. The
+    # only thing keeping them secret is the sealed-secrets private key, which
+    # exists solely inside this datastore — and the controller rotates that key
+    # roughly monthly, so all six live keys matter, not just the newest. Losing
+    # prd01's disk without this job means every one of those secrets has to be
+    # recreated from its original source, the cluster CA is gone so no agent can
+    # rejoin, and the join token is gone with it.
+    - name: k3s-server
+      source: prd01
+      paths:
+          - from: /var/lib/rancher/k3s/server
+            to: k3s/server
+            # Carries tls/ (the cluster CA private keys), token, cred/, etc/,
+            # manifests/ and static/ — everything an agent needs to rejoin and
+            # every client certificate needs to validate.
+            exclude:
+                - /db/ # the dump below takes this, consistently
+                - /kine.sock # a UNIX socket; rsync cannot copy it and it holds nothing
+      dumps:
+          - to: k3s/dump/state.db
+            engine: sqlite
+            # k3s here runs `k3s server` with no --cluster-init and no
+            # --datastore-endpoint, so the datastore is embedded SQLite (kine),
+            # not etcd. `k3s etcd-snapshot` does not apply and never will while
+            # that stays true.
+            path: /var/lib/rancher/k3s/server/db/state.db
+            method: vacuum-into
+            # Unlike n8n's database this one cannot be read by the runner's own
+            # user: /var/lib/rancher/k3s/server and its db/ are both drwx------
+            # root, so the piped python3 program cannot even traverse to the
+            # file. rsyncing db/ as root would work and is refused — state.db,
+            # -wal and -shm would be copied at three different instants and the
+            # result can be torn, which is the live-datadir copy this file
+            # rejects for miniflux. Instead a root script pinned in sudoers does
+            # the VACUUM INTO. See prd01/k3s-datastore-snapshot and the README.
+            helper: /usr/local/sbin/k3s-datastore-snapshot
+            # Must equal the path the helper writes; the runner refuses the run
+            # if the helper reports a different one, so the two cannot drift
+            # into pulling a file nobody produced today.
+            tmp: /var/lib/k3s-datastore-backup/state.db
+            # k3s encrypts the datastore's bootstrap data with the server token,
+            # so a database restored beside a different token is unusable. The
+            # helper hashes the token either side of the copy; this makes the
+            # runner also check the token it actually stored against that hash,
+            # because `paths` are taken before `dumps` and could otherwise store
+            # an older one.
+            paired_file: k3s/server/token
+
     # ------------------------------------------- storage01's own app databases
     # Only the databases. The bulk data these apps serve already lives on
     # `tank` — copying tank to tank buys nothing. What protects it is the

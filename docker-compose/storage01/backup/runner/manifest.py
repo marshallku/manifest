@@ -61,11 +61,46 @@ def restore_dump(source: Source, spec: DumpSpec, dest_root: Path) -> str:
         )
         return f"{target} sh -c {shlex.quote(inner)} < {path}"
 
-    if spec.engine == "sqlite":
+    if spec.engine == "sqlite" and not spec.helper:
         return (
             f"# stop the service first, then: "
             f"rsync --archive {path} {source.ssh}:{spec.path} && "
             f"ssh {source.ssh} rm -f {spec.path}-wal {spec.path}-shm"
+        )
+
+    if spec.engine == "sqlite":
+        # A helper-backed dump is one whose database could not be read without
+        # privilege, which in practice means its directory is excluded from the
+        # paths half of the job and may not exist at all on a rebuilt host.
+        # "rsync the file back" is wrong here, and wrong in the way that only
+        # surfaces when someone is already having a bad day, so the whole
+        # procedure is written out instead of implied.
+        directory = (spec.path or "").rsplit("/", 1)[0]
+        pairing = (
+            f"#  3. sha256sum the restored {spec.paired_file} and compare it with the "
+            f"`paired_sha256` recorded beside this artifact. If they differ, STOP: the two "
+            f"halves were taken at different moments and cannot be restored together.\n"
+            if spec.paired_file
+            else ""
+        )
+        staged = f"/tmp/{spec.dest.rsplit('/', 1)[-1]}"
+        return (
+            f"# NOT YET DRILLED. Restoring this is a procedure, not a copy, and every\n"
+            f"# step runs AS ROOT ON THE TARGET HOST. The backup account cannot do it:\n"
+            f"# {source.ssh} grants it `rsync --server --sender` — read access and\n"
+            f"# nothing else, deliberately. A restore is a console, not this runner.\n"
+            f"#  1. install the service on the target host, then STOP it.\n"
+            f"#  2. restore the paths half of this job first, preserving ownership and modes.\n"
+            f"{pairing}"
+            f"#  4. stage the database and install it as root. Its directory is excluded\n"
+            f"#     from the paths half, so on a rebuilt host it may not exist at all:\n"
+            f"#       scp {path} {source.ssh}:{staged}      # any user; /tmp is writable\n"
+            f"#       # then, as root on the target:\n"
+            f"#       install -d -o root -g root -m 0700 {directory}\n"
+            f"#       install -o root -g root -m 0644 {staged} {spec.path}\n"
+            f"#       rm -f {spec.path}-wal {spec.path}-shm {staged}\n"
+            f"#  5. start the service and confirm it came back with the state you expect,\n"
+            f"#     not merely that the process is running."
         )
 
     raise ValueError(f"no restore command for engine {spec.engine!r}")

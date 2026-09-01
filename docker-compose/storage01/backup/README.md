@@ -292,6 +292,80 @@ snapshot at all**. The cost of leaving it open was therefore not "no Infisical
 backup" but "no versioning of anything", which is what actually happened: the
 last snapshot before that date was thirteen days old.
 
+### The datastore helper for the `k3s-server` job
+
+The cluster's identity — the sealed-secrets private keys, the cluster CA, the
+join token — lives only in prd01's k3s datastore. `marshallku/manifest` is a
+**public** repository holding 8 SealedSecrets, so that private key is the only
+thing keeping them secret, and the controller rotates it about monthly, which
+means all six live keys matter rather than just the newest.
+
+`/var/lib/rancher/k3s/server` and its `db/` are both `drwx------ root`, so the
+ordinary `sqlite` engine — which pipes a program to the source's `python3` as
+the unprivileged runner user — cannot reach `state.db` at all. Copying `db/`
+with the send-only root rsync grant *would* work and is refused: `state.db`,
+`-wal` and `-shm` would be read at three different instants and the result can
+be torn, which is exactly what [`paths` never copies a live database
+directory](#paths--never-copy-a-live-database-directory) is about.
+
+So the copy is made by a root script that sudoers pins by path. It takes no
+arguments and reads no input, which is the whole point: there is no argument to
+smuggle anything through, so the grant authorises one behaviour rather than a
+program. Widening sudoers to `python3` or `sqlite3` instead would be arbitrary
+root code execution — strictly worse than the send-only rsync grant prd01
+already carries.
+
+Install on prd01, as root:
+
+```sh
+# 1. the artifact directory. Root-only on purpose: the script refuses to run if
+#    it is owned by anyone else or writable by group or other, because a user
+#    who can create entries there could plant a symlink for a privileged write.
+install -d -o root -g root -m 0700 /var/lib/k3s-datastore-backup
+
+# 2. the helper itself, atomically, from this repo
+install -o root -g root -m 0755 prd01/k3s-datastore-snapshot \
+        /usr/local/sbin/k3s-datastore-snapshot
+
+# 3. the grant — validate BEFORE placing it. A syntax error in a sudoers file
+#    can lock every sudo user out of the host.
+visudo -cf prd01/sudoers.d/backup-k3s-datastore \
+  && install -o root -g root -m 0440 prd01/sudoers.d/backup-k3s-datastore \
+             /etc/sudoers.d/backup-k3s-datastore
+```
+
+Then verify, because the grant is only as narrow as the file it names — if
+`marshall` can modify that script, the grant is a root shell:
+
+```sh
+stat -c '%n %U:%G %a' /usr/local/sbin/k3s-datastore-snapshot /usr/local/sbin \
+                      /var/lib/k3s-datastore-backup
+#   ... root:root 755   (and no group/other write anywhere in that list)
+sha256sum /usr/local/sbin/k3s-datastore-snapshot
+#   must equal the committed copy: sha256sum prd01/k3s-datastore-snapshot
+sudo -n -u marshall true && sudo -n /usr/local/sbin/k3s-datastore-snapshot
+#   prints one JSON object; exits non-zero and writes nothing on any failure
+```
+
+The committed copy is the source of truth, but **repository presence is not
+operational coverage** — the installed file can drift from it. Re-check the
+sha256 after any change to either.
+
+One residual risk is left open on purpose. `k3s token rotate` both re-encrypts
+the datastore's bootstrap data and rewrites the token file, and the order is a
+k3s implementation detail. A rotation landing inside the few seconds of a copy
+could leave the helper's before/after hashes both reading the old token while
+the copy needs the new one, and nothing here would notice. Closing it would mean
+reimplementing k3s's bootstrap decryption inside a backup script — coupling to
+internals that breaks on upgrade — to defend a window against a manual command
+that has never been run on this cluster. **The mitigation is operational: after
+any `k3s token rotate`, run the backup by hand and confirm it succeeded.**
+
+The same shape is used on pve02: [`pve02/backup-snapshot`](pve02/backup-snapshot)
+is the forced command described under [the snapshot account](#the-snapshot-account-on-pve02),
+committed here so the description is exact rather than approximate. It is
+subject to the same drift caveat.
+
 ## Installing the schedule
 
 `systemd/` holds the unit and its timer. Both are commented; read them rather
@@ -396,6 +470,24 @@ manifest.
 - **`/mnt/hdd/data/nextcloud` on prd01 (21 GB)** — superseded by the migration to
   storage01 on 2026-08-18. Kept only as a rollback path; delete it once the new
   instance has been exercised.
+- **TLS certificates and private keys (`/etc/nginx/ssl` on prd01)** — `acme.sh`
+  reissues them. Renewal is automated and was verified working on 2026-09-01
+  (`crontab`, `29 11 * * *`; next renewals 2026-09-04 through 09-18). Backing up
+  a private key that a robot will replace in weeks buys a copy of a secret and
+  nothing else. Note the caveat this rests on: three of the five domains still
+  use HTTP-01, so reissuing them requires the router's `:80` forward to point at
+  the issuing host. If that stops being true, this entry stops being true.
+- **The edge repository deploy key (`/etc/edge/id_ed25519` on prd01)** —
+  regenerate it and re-add the public half to GitHub. Five minutes, and it
+  invalidates the old one, which a restored copy would not.
+- **The Cloudflare API token in `~/.acme.sh/account.conf`** — regenerate in the
+  Cloudflare dashboard. (The file was `0664` until 2026-09-01; it is `0600` now.)
+- **Encryption of this store** — deliberately absent *here* rather than
+  everywhere: it belongs to the offsite layer, where `restic` encrypts by
+  default. `tank` already holds Infisical's dump and every application
+  database, so the `k3s-server` job does not change who can read what. What
+  would change it is uploading any of this to a bucket in the clear, and that
+  is the layer that must not be built without encryption.
 
 ## Still missing
 

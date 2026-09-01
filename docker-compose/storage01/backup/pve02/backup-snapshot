@@ -1,0 +1,12 @@
+#!/bin/sh
+# Forced command for the storage01 backup runner. The client sends only a
+# snapshot name; the dataset is pinned here so no client can choose it, and
+# `zfs destroy` is unreachable by construction — pruning is pve02's own timer.
+set -eu
+DATASET=tank/backup/hosts
+name=${SSH_ORIGINAL_COMMAND:-}
+case "$name" in
+    backup-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z) ;;
+    *) echo "refused: \"$name\" is not backup-<YYYYMMDDTHHMMSSZ>" >&2; exit 2 ;;
+esac
+exec /usr/sbin/zfs snapshot "$DATASET@$name"

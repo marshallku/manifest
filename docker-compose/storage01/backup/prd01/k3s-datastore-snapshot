@@ -1,0 +1,161 @@
+#!/usr/bin/python3
+"""Produce a consistent copy of prd01's k3s datastore, as root.
+
+Why this exists at all. The runner's ordinary `sqlite` engine pipes a short
+program to the source host's python3, which runs as the unprivileged runner
+user. That works for n8n's database, whose file and directories are readable.
+It cannot work here: /var/lib/rancher/k3s/server and its db/ are both
+drwx------ root, so the unprivileged process cannot even traverse to state.db.
+
+The alternative would be rsyncing db/ as root — the runner's send-only rsync
+grant can read it. That is rejected: state.db, -wal and -shm would be copied at
+three different instants and the result can be torn. A torn k3s datastore is a
+backup that only reveals itself as useless during a disaster, which is the one
+moment it must not.
+
+So this script exists to be *pinned in sudoers*. It takes no arguments and
+reads no input, so granting NOPASSWD on it authorises exactly one behaviour and
+nothing else. That is the same shape as pve02's /usr/local/sbin/backup-snapshot,
+where the client chooses a snapshot name and the dataset is pinned here.
+
+Two properties worth preserving if this is ever edited:
+
+1. The artifact never leaves a root-owned directory, and is never chowned.
+   The runner pulls it with `rsync --rsync-path="sudo rsync"`, so it reads the
+   file as root and the file never needs to be reachable by the runner's user.
+   An earlier draft wrote to /mnt/hdd/tmp and chowned the result; that is a
+   local privilege escalation, because a user who can create entries in that
+   directory can plant a symlink and have this script chown a file it should
+   never touch.
+
+2. The k3s token is hashed BEFORE and AFTER the copy, and a change fails the
+   run. k3s encrypts the datastore's bootstrap data with that token, so a
+   database paired with a different token cannot be restored. The hash is also
+   reported, so the runner can prove the token it stored belongs with the
+   database it stored.
+
+What (2) does NOT cover, stated because a guarantee nobody wrote down is one
+somebody will assume: `k3s token rotate` re-encrypts the bootstrap data in the
+datastore and rewrites the token file, and this script does not know the order
+of those two. If a rotation lands so that the datastore is already re-encrypted
+while the file still holds the old token, both hashes here read old, the copy
+needs the new token, and nothing detects it.
+
+That is not closed, deliberately. Closing it would mean reimplementing k3s's
+bootstrap decryption inside a backup script — a hard coupling to internals that
+would break on upgrade and fail in the direction of "backup refuses to run" —
+to defend a window of a few seconds against a command that is manual, rare, and
+has never been run on this cluster. The proportionate answer is operational:
+**after any `k3s token rotate`, run this backup by hand and confirm it
+succeeded**, rather than waiting for the nightly one.
+"""
+
+import hashlib
+import json
+import os
+import sqlite3
+import stat
+import sys
+import urllib.parse
+
+DB = "/var/lib/rancher/k3s/server/db/state.db"
+TOKEN = "/var/lib/rancher/k3s/server/token"
+OUT_DIR = "/var/lib/k3s-datastore-backup"
+OUT = os.path.join(OUT_DIR, "state.db")
+
+
+def die(message):
+    sys.exit("k3s-datastore-snapshot: " + message)
+
+
+def sha256_of(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def require_private_root_dir(path):
+    """Refuse to write anywhere a non-root user could have prepared for us."""
+    try:
+        info = os.stat(path)
+    except FileNotFoundError:
+        die(f"{path} does not exist; create it root:root 0700 (see the backup README)")
+    if not stat.S_ISDIR(info.st_mode):
+        die(f"{path} is not a directory")
+    if info.st_uid != 0:
+        die(f"{path} is owned by uid {info.st_uid}, not root")
+    if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        die(f"{path} is writable by group or other (mode {oct(stat.S_IMODE(info.st_mode))})")
+
+
+def read_only_uri(path):
+    return "file:" + urllib.parse.quote(path) + "?mode=ro"
+
+
+def main():
+    require_private_root_dir(OUT_DIR)
+
+    token_before = sha256_of(TOKEN)
+
+    # VACUUM INTO refuses to overwrite, so the previous run's artifact has to
+    # go first. Unlike the unprivileged engine there is no evidence to preserve
+    # here: this script is self-contained and idempotent, so a leftover means
+    # only that the last run finished, not that one was interrupted.
+    if os.path.lexists(OUT):
+        if os.path.islink(OUT):
+            die(f"{OUT} is a symlink; refusing to follow it")
+        os.unlink(OUT)
+
+    try:
+        source_bytes = os.path.getsize(DB)
+
+        connection = sqlite3.connect(read_only_uri(DB), uri=True)
+        try:
+            connection.execute("VACUUM INTO ?", (OUT,))
+        finally:
+            connection.close()
+
+        check = sqlite3.connect(read_only_uri(OUT), uri=True)
+        try:
+            integrity = check.execute("PRAGMA integrity_check").fetchone()[0]
+        finally:
+            check.close()
+        if integrity != "ok":
+            raise RuntimeError("integrity_check on the copy: " + integrity)
+
+        token_after = sha256_of(TOKEN)
+        if token_after != token_before:
+            raise RuntimeError(
+                "the k3s server token changed while the datastore was being copied. "
+                "The copy cannot be restored with either token, so it is discarded. "
+                "Re-run once the rotation has settled."
+            )
+    except BaseException:
+        if os.path.lexists(OUT) and not os.path.islink(OUT):
+            os.unlink(OUT)
+        raise
+
+    os.chmod(OUT, 0o600)
+
+    # The digest binds the bytes to this report. The runner checks it against
+    # what it actually pulled, which is the only thing that rules out a second
+    # invocation replacing the artifact in the window between the two — the
+    # sudo grant is not exclusive, so that window is real even if narrow.
+    print(
+        json.dumps(
+            {
+                "artifact": OUT,
+                "source_bytes": source_bytes,
+                "bytes": os.path.getsize(OUT),
+                "sha256": sha256_of(OUT),
+                "integrity_check": integrity,
+                "paired_sha256": token_after,
+            }
+        )
+    )
+
+
+if __name__ == "__main__":
+    main()
