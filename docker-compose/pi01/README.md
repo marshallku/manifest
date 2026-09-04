@@ -17,9 +17,10 @@ start.
 | `adguard-home` | 53, 3080 | Secondary DNS; config replicated from the primary |
 | `uptime-kuma` | 3001 | External probe + the homelab's only alerting path |
 | `node-exporter` | 9100 | Metrics, scraped over the LAN by the in-cluster Prometheus |
+| `homelab-status` | 8080 | One ~1 KB JSON rollup of Kuma + Prometheus, for the ESP32 shelf display |
 
 Images must be multi-arch — this host is arm64 while every cluster node is
-amd64. All four images in use here publish arm64.
+amd64. All five images in use here publish arm64.
 
 ## Storage
 
@@ -37,6 +38,14 @@ SD write volume is bounded by configuration instead:
 - Uptime Kuma: set *Settings → Monitor History → Keep data for* to **30 days**
   after first login. It defaults to 180 and writes a heartbeat row per monitor
   per interval.
+- `homelab-status` writes nothing at all: it reads Kuma's database read-only,
+  in place over the live WAL, and keeps its output in memory. Copying the
+  database each refresh would have cost ~34 MB of writes every 30 s.
+
+> The `uptime-kuma` compose file pins `1.23.17`, but the running container is
+> **2.5.0**. Reconcile that before relying on the pinned tag; `homelab-status`
+> reads the database directly and works with either, but the status-page HTTP
+> API differs between the two majors.
 
 ## Setup
 
@@ -54,6 +63,12 @@ docker compose up -d        # starts the replica + the sync job
 # 2. metrics and probing
 cd ../node-exporter && docker compose up -d
 cd ../uptime-kuma  && docker compose up -d
+
+# 3. status rollup for the ESP32 display (needs uptime-kuma running first)
+cd ../homelab-status
+cp .env.example .env && chmod 600 .env
+$EDITOR .env                # STATUS_TOKEN — must match the firmware's own .env
+docker compose up -d
 ```
 
 `bootstrap.sh` is idempotent — re-running it skips the install and just

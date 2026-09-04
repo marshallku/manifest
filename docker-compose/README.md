@@ -35,6 +35,9 @@ deliberately kept **outside** the k3s cluster and off any shared dependency:
   the cluster itself is unreachable.
 - `pi01/node-exporter` — metrics, scraped over the LAN by the in-cluster
   Prometheus (same pattern as the Mac mini target).
+- `pi01/homelab-status` — collapses Kuma and Prometheus into one small JSON
+  document for the ESP32-S3 shelf display. Here rather than on `prd01` for the
+  same reason as `uptime-kuma`: it has to keep answering when `prd01` does not.
 
 ### Storage on pi01
 
