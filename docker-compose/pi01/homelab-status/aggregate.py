@@ -271,6 +271,21 @@ def read_prometheus() -> dict:
     return {"ok": True, "nodes": out}
 
 
+def generated_stamp(when: float) -> str:
+    """Wall-clock label for when a snapshot was built, in the host's timezone.
+
+    Formatted here rather than on the device for two reasons: the board has no
+    synchronised clock, and a string it merely echoes is a value it cannot
+    fake. A frozen display keeps showing the moment it last fetched, which
+    stops matching a wristwatch — the one staleness signal that survives the
+    device itself wedging.
+
+    The date is always included. Dropping it would make a day-old frozen
+    screen indistinguishable from a fresh one.
+    """
+    return time.strftime("%m-%d %H:%M:%S", time.localtime(when))
+
+
 def build() -> dict:
     """Assemble the document, degrading each source independently."""
     try:
@@ -296,7 +311,14 @@ def build() -> dict:
             "nodes": [],
         }
 
-    return {"v": 1, "generated": int(time.time()), "kuma": kuma, "hosts": hosts}
+    now = time.time()
+    return {
+        "v": 1,
+        "generated": int(now),
+        "generated_at": generated_stamp(now),
+        "kuma": kuma,
+        "hosts": hosts,
+    }
 
 
 # Served until the first refresh lands. The device parses into fixed-size
@@ -304,6 +326,7 @@ def build() -> dict:
 # response — a short document would fail its parser rather than degrade.
 EMPTY_DOCUMENT = {
     "v": 1,
+    "generated_at": "--",
     "kuma": {
         "ok": False,
         "up": 0,

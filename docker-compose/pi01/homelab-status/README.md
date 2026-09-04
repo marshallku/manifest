@@ -25,8 +25,9 @@ host panel instead of showing stale gauges.
 ```jsonc
 {
   "v": 1,
-  "generated": 1788479374,  // unix seconds, when the snapshot was built
-  "age": 12,                // seconds, stamped at *request* time
+  "generated": 1788479374,          // unix seconds, when the snapshot was built
+  "generated_at": "09-04 10:35:35", // the same moment, preformatted for display
+  "age": 12,                        // seconds, stamped at *request* time
   "stale": false,           // age > STALE_AFTER_SEC
   "ready": true,            // false until the first refresh lands
   "kuma": {
@@ -46,10 +47,21 @@ host panel instead of showing stale gauges.
 }
 ```
 
-`age` is computed when the request is served, not when the snapshot was built.
-The device has no real-time clock, so a `generated` timestamp alone would tell
-it nothing; this way a wedged refresh thread shows up on the panel as a growing
-age instead of failing silently.
+`age` is computed when the request is served, not when the snapshot was built,
+so a wedged refresh thread shows up as a growing age rather than as silence. It
+is what `stale` is derived from.
+
+`generated_at` is that same moment as a wall-clock string, formatted here
+because the device has no synchronised clock. **It, not `age`, is what the
+display shows**, and the reason is a failure an age cannot catch: an age is
+something the device asserts about itself, so firmware that wedges just after a
+good draw keeps showing "5s ago" and looks healthy forever. A wall-clock stamp
+is a value the device merely echoes — a frozen screen stops agreeing with the
+clock on the wall, which anyone can check against a wristwatch without trusting
+the device at all.
+
+The date is always included. Without it, a day-old frozen screen would be
+indistinguishable from a fresh one.
 
 Only settled states count, and they leave the ratio **entirely** — numerator
 and denominator both. Keeping a `PENDING` monitor in the denominator is what
