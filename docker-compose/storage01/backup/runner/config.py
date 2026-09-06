@@ -24,6 +24,7 @@ STREAMING_ENGINES = {
     "mysqldump": "mysqldump",
     "mariadb-dump": "mariadb-dump",
     "pg_dump": "pg_dump",
+    "pg_dumpall": "pg_dumpall",
     "mongodump": "mongodump",
 }
 ENGINES = set(STREAMING_ENGINES) | {"sqlite"}
@@ -159,9 +160,12 @@ def _parse_sources(raw: dict[str, Any]) -> dict[str, Source]:
             )
         mode = modes[0]
         if mode == "ssh":
-            if spec.get("privilege") != "sudo-rsync":
-                raise ConfigError(f"sources.{name}.privilege must be 'sudo-rsync'")
-            sources[name] = Source(name, "ssh", ssh=spec["ssh"], privilege="sudo-rsync")
+            privilege = spec.get("privilege")
+            if privilege is not None and privilege != "sudo-rsync":
+                raise ConfigError(
+                    f"sources.{name}.privilege must be 'sudo-rsync' or omitted"
+                )
+            sources[name] = Source(name, "ssh", ssh=spec["ssh"], privilege=privilege)
         elif mode == "local":
             if spec["local"] is not True:
                 raise ConfigError(f"sources.{name}.local must be true")
@@ -204,6 +208,11 @@ def _parse_jobs(raw: Any, sources: dict[str, Source]) -> tuple[Job, ...]:
             raise ConfigError(f"job {name!r} declares neither paths nor dumps")
         if paths and source.mode == "kubectl":
             raise ConfigError(f"job {name!r}: a kubectl source has no filesystem to pull from")
+        if paths and source.mode == "ssh" and source.privilege is None:
+            raise ConfigError(
+                f"job {name!r}: source {source_name!r} declares no privilege, so it can only "
+                "run dumps — pulling paths needs 'privilege: sudo-rsync'"
+            )
 
         precondition = entry.get("precondition") or {}
         if not isinstance(precondition, dict):

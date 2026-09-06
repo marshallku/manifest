@@ -69,14 +69,24 @@ sources:
         # Not reachable as a filesystem at all — pods are dumped through
         # `kubectl exec`. kubeconfig comes from the runner's environment.
         kubectl: {}
+    # No `privilege`: this source only runs dumps. Pulling paths would need sudo
+    # rsync on db01, and nothing here needs its filesystem.
+    db01:
+        ssh: marshall@192.168.219.130
 
 # Stateful stacks defined in this repo but deliberately NOT backed up, recorded
 # so that "absent" is distinguishable from "forgotten":
 #
-#   couchdb, influxdb, postgres, postgres-dev
-#       Defined under docker-compose/ but never deployed on prd01 — no container
-#       and no directory under /mnt/hdd/data. Nothing exists to back up. If any
-#       of them is deployed, it needs a job here before it holds real data.
+#   couchdb
+#       Defined under docker-compose/ but never deployed — no container and no
+#       data directory. Nothing exists to back up. If it is deployed, it needs a
+#       job here before it holds real data.
+#
+#   influxdb (db01, 30 MB)
+#       Deployed, but `influx backup` writes a directory rather than a stream,
+#       which no engine here models. Metrics, and retention is being cut to three
+#       weeks — the same reasoning that makes Prometheus disposable. Revisit if
+#       it ever holds something that is not a metric.
 #
 #   /mnt/hdd/data/nextcloud (21 GB)
 #       Superseded by the migration to storage01 on 2026-08-18. Kept only as a
@@ -317,3 +327,25 @@ jobs:
                 username_env: POSTGRES_USER
                 password_env: POSTGRES_PASSWORD
                 database_env: POSTGRES_DB
+
+    # The shared Postgres behind the app factory (db, playzy, sssup) and the dev
+    # instance. Until 2026-09-06 neither was backed up at all.
+    # `pg_dumpall` rather than per-database `pg_dump`: it also carries roles and
+    # grants, which a shared instance is exactly the case that needs them.
+    - name: db01
+      source: db01
+      dumps:
+          - to: db01/dump/postgres-all.sql.gz
+            engine: pg_dumpall
+            container: postgres
+            args: [--clean, --if-exists]
+            auth:
+                username_env: POSTGRES_USER
+                password_env: POSTGRES_PASSWORD
+          - to: db01/dump/postgres-dev-all.sql.gz
+            engine: pg_dumpall
+            container: postgres-dev
+            args: [--clean, --if-exists]
+            auth:
+                username_env: POSTGRES_USER
+                password_env: POSTGRES_PASSWORD

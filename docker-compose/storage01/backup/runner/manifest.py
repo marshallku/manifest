@@ -53,6 +53,15 @@ def restore_dump(source: Source, spec: DumpSpec, dest_root: Path) -> str:
         )
         return f"gunzip -c {path} | {target} sh -c {shlex.quote(inner)}"
 
+    if spec.engine == "pg_dumpall":
+        # pg_dumpall emits CREATE DATABASE + \connect, so it restores through a
+        # maintenance database rather than into a named one.
+        inner = (
+            f'export PGPASSWORD={_var(spec, "password_env")}; '
+            f'exec psql -U {_var(spec, "username_env")} -d postgres'
+        )
+        return f"gunzip -c {path} | {target} sh -c {shlex.quote(inner)}"
+
     if spec.engine == "mongodump":
         inner = (
             f'exec mongorestore --archive --gzip --drop '

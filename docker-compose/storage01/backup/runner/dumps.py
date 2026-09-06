@@ -39,6 +39,7 @@ def build(spec: DumpSpec) -> DumpCommand:
         "mysqldump": _mysql,
         "mariadb-dump": _mysql,
         "pg_dump": _postgres,
+        "pg_dumpall": _postgres_all,
         "mongodump": _mongo,
     }.get(spec.engine)
     if builder is None:
@@ -96,6 +97,24 @@ def _postgres(spec: DumpSpec) -> DumpCommand:
             f"exec pg_dump -U {user} -d {database} {args}".rstrip()
         ),
         tool="pg_dump",
+    )
+
+
+def _postgres_all(spec: DumpSpec) -> DumpCommand:
+    password = _env(spec, "password_env")
+    if password is None:
+        raise ConfigError(f"pg_dumpall dump {spec.dest!r} needs auth.password_env")
+    user = _env(spec, "username_env")
+    if user is None:
+        raise ConfigError(f"pg_dumpall dump {spec.dest!r} needs auth.username_env")
+
+    args = " ".join(shlex.quote(a) for a in spec.args)
+    return DumpCommand(
+        snippet=(
+            f"export PGPASSWORD={password}; "
+            f"exec pg_dumpall -U {user} {args}".rstrip()
+        ),
+        tool="pg_dumpall",
     )
 
 

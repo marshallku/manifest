@@ -92,3 +92,27 @@ def test_every_snippet_is_a_single_shell_word_when_quoted():
     """It travels as one argv element through `sh -c` and, over ssh, shlex.join."""
     snippet = dumps.build(mysql()).snippet
     assert shlex.split(shlex.quote(snippet)) == [snippet]
+
+
+def test_pg_dumpall_dumps_every_database_and_the_globals():
+    command = dumps.build(
+        DumpSpec(
+            dest="db01/dump/all.sql.gz",
+            engine="pg_dumpall",
+            container="postgres",
+            args=("--clean", "--if-exists"),
+            auth={"username_env": "POSTGRES_USER", "password_env": "POSTGRES_PASSWORD"},
+        )
+    )
+    assert command.tool == "pg_dumpall"
+    assert "pg_dumpall -U" in command.snippet
+    assert "--clean --if-exists" in command.snippet
+    # No -d: pg_dumpall covers every database, so naming one would be a lie.
+    assert " -d " not in command.snippet
+
+
+def test_pg_dumpall_needs_credentials():
+    with pytest.raises(ConfigError):
+        dumps.build(
+            DumpSpec(dest="x.sql.gz", engine="pg_dumpall", container="postgres", auth={})
+        )

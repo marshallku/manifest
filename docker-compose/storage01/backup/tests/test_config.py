@@ -58,9 +58,9 @@ def test_the_real_config_loads():
     from pathlib import Path
 
     parsed = cfg.load(Path(__file__).resolve().parents[1] / "config.yaml")
-    assert len(parsed.jobs) == 8
+    assert len(parsed.jobs) == 9
     assert {j.bundle for j in parsed.jobs} == {
-        "blog", "dongjoo", "n8n", "misc", "miniflux", "infisical", "storage01", "k3s"
+        "blog", "dongjoo", "n8n", "misc", "miniflux", "infisical", "storage01", "k3s", "db01"
     }
 
 
@@ -173,3 +173,41 @@ def test_sqlite_dump_requirements(patch, message):
     dump.update(patch)
     with pytest.raises(ConfigError, match=message):
         cfg.parse(job(paths=[], dumps=[dump]))
+
+
+def test_an_ssh_source_may_omit_privilege_when_it_only_dumps():
+    raw = build()
+    raw["sources"]["dumper"] = {"ssh": "marshall@db01"}
+    raw["jobs"] = [
+        {
+            "name": "d",
+            "source": "dumper",
+            "dumps": [
+                {
+                    "to": "d/dump/all.sql.gz",
+                    "engine": "pg_dumpall",
+                    "container": "postgres",
+                    "auth": {"username_env": "U", "password_env": "P"},
+                }
+            ],
+        }
+    ]
+    parsed = cfg.parse(raw)
+    assert parsed.sources["dumper"].privilege is None
+
+
+def test_a_privilegeless_ssh_source_cannot_pull_paths():
+    raw = build()
+    raw["sources"]["dumper"] = {"ssh": "marshall@db01"}
+    raw["jobs"] = [
+        {"name": "d", "source": "dumper", "paths": [{"from": "/srv", "to": "d/files"}]}
+    ]
+    with pytest.raises(ConfigError, match="only.*run dumps"):
+        cfg.parse(raw)
+
+
+def test_rejects_an_unknown_privilege_value():
+    raw = build()
+    raw["sources"]["dumper"] = {"ssh": "marshall@db01", "privilege": "root"}
+    with pytest.raises(ConfigError, match="sudo-rsync' or omitted"):
+        cfg.parse(raw)
