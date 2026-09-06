@@ -1,0 +1,21 @@
+services:
+    web:
+        container_name: blog-frontend
+        image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+        restart: unless-stopped
+        ports:
+            # 이 호스트 주소로만 공개한다. 엣지(edge01·prd01)만 붙으면 된다.
+            - "192.168.219.100:8090:80"
+        volumes:
+            # scripts/deploy.sh 가 이 디렉터리에 직접 굽는다 — 빌드가 곧 배포다.
+            # 컨테이너는 읽기만 하므로 재기동 없이 새 산출물이 바로 반영된다.
+            - /home/marshall/dev/blog/dist:/usr/share/nginx/html:ro
+            - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+        healthcheck:
+            # 프로세스가 아니라 내용을 본다. 마운트가 비면 nginx 는 멀쩡히 뜬 채
+            # 403 만 내므로, 프로세스 헬스체크는 빈 사이트를 정상으로 보고한다.
+            test: ["CMD-SHELL", "wget -qO- http://localhost/ | head -c 1 | grep -q ."]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 5s
