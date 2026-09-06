@@ -1,0 +1,18 @@
+# mrry.now. 도메인이 mrry.me 에서 바뀌었고 스택 이름도 따라왔다.
+# 데이터 경로만 /mnt/hdd/data/mrry.me 로 남아 있는데, 백업 러너 config 의
+# prd01 job 이 그 경로를 misc/mrry.me 로 받고 있어서 옮기면 기존 백업과 어긋난다.
+services:
+    web:
+        image: ghcr.io/marshallku/mrry-frontend:latest
+        container_name: mrry-now-web
+        restart: unless-stopped
+        ports:
+          - "8034:3000"
+    api:
+        image: ghcr.io/marshallku/mrry-backend:latest
+        container_name: mrry-now-api
+        restart: unless-stopped
+        ports:
+          - "8035:3001"
+        volumes:
+          - "/mnt/hdd/data/mrry.me/data:/app/data"

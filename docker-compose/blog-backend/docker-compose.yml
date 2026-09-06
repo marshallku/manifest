@@ -25,7 +25,10 @@ services:
             - .env
         environment:
             - HOST=0.0.0.0
-            - MONGO_HOST=172.18.0.1
+            # 도커 브리지 게이트웨이 IP 대신 compose 서비스 이름을 쓴다 —
+            # 172.18.0.1 은 네트워크가 다시 만들어지면 바뀔 수 있다.
+            - MONGO_HOST=blog-database
+            - MONGO_PORT=27017
             - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
             - NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME}
             - TEMPLATE_PATH=templates/**/*.html
