@@ -14,7 +14,9 @@ services:
         healthcheck:
             # 프로세스가 아니라 내용을 본다. 마운트가 비면 nginx 는 멀쩡히 뜬 채
             # 403 만 내므로, 프로세스 헬스체크는 빈 사이트를 정상으로 보고한다.
-            test: ["CMD-SHELL", "wget -qO- http://localhost/ | head -c 1 | grep -q ."]
+            # 주소는 localhost 가 아니라 127.0.0.1 이어야 한다 — localhost 는 ::1 로
+            # 먼저 풀리는데 아래 nginx 는 IPv4 만 듣는다(연결 거부 → 항상 unhealthy).
+            test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ | head -c 1 | grep -q ."]
             interval: 30s
             timeout: 5s
             retries: 3
