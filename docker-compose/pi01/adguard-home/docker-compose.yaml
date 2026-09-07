@@ -41,8 +41,11 @@ services:
             # No remote-trigger API. It is unauthenticated unless credentials are
             # set, and the cron schedule already covers every case we need.
             - --api-port=0
-            # DHCP must never be replicated. The primary serves DHCP for the LAN;
-            # a second server handing out competing leases is a network-wide outage.
+            # DHCP must never be replicated: two servers handing out competing
+            # leases is a network-wide outage. Kept as a guard rather than a fix —
+            # neither instance actually serves DHCP (`dhcp.enabled: false` on both;
+            # the router does it), but that is a setting someone can flip in the UI
+            # without thinking about this replica.
             - --feature-dhcp-server-config=false
             - --feature-dhcp-static-leases=false
             # Keep this replica's own short retention rather than inheriting the
