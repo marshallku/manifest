@@ -58,9 +58,10 @@ def test_the_real_config_loads():
     from pathlib import Path
 
     parsed = cfg.load(Path(__file__).resolve().parents[1] / "config.yaml")
-    assert len(parsed.jobs) == 9
+    assert len(parsed.jobs) == 10
     assert {j.bundle for j in parsed.jobs} == {
-        "blog", "dongjoo", "n8n", "misc", "miniflux", "infisical", "storage01", "k3s", "db01"
+        "blog", "dongjoo", "n8n", "misc", "miniflux", "infisical", "storage01", "k3s",
+        "db01", "edge01",
     }
 
 

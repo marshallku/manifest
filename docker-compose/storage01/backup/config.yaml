@@ -60,6 +60,12 @@ sources:
         # `rsync --daemon` are all refused.
         privilege: sudo-rsync
 
+    edge01:
+        ssh: marshall@192.168.219.192
+        # Same send-only `sudo rsync` grant as prd01 — /etc/nginx/ssl and
+        # /etc/edge are root-owned, and .acme.sh holds 0600 files.
+        privilege: sudo-rsync
+
     storage01:
         # The runner's own host. Dumps run against local containers; there is
         # nothing to pull over the network.
@@ -236,6 +242,36 @@ jobs:
                 username_env: POSTGRES_USER
                 password_env: POSTGRES_PASSWORD
                 database_env: POSTGRES_DB
+
+    # -------------------------------------------------------------- edge01
+    # What the edge holds that git does not, and that no other job covered.
+    #
+    # `edge.md` calls the edge a re-creation target rather than a backup target,
+    # and for nginx.conf that is right — `marshallku/edge` is the source of truth
+    # and nginx-sync reconciles it. These three are the exception: they are the
+    # residue that stays outside git.
+    #
+    # Losing them is not fatal but it is expensive and circular. Certificates can
+    # be reissued — except `marshallku.com`, whose zone is hosting.co.kr, has no
+    # acme.sh dnsapi, and is therefore HTTP-01 only: reissuing it needs :80
+    # already forwarded to the very host being rebuilt.
+    - name: edge01
+      source: edge01
+      paths:
+          - from: /etc/nginx/ssl
+            to: edge01/nginx-ssl
+            # Certificates and private keys for five domains. Excluded from
+            # nginx-sync's rsync on purpose, so git never sees them.
+          - from: /etc/edge
+            to: edge01/etc-edge
+            # The read-only GitHub deploy key nginx-sync clones with, plus the
+            # pinned github.com host keys.
+          - from: /home/marshall/.acme.sh
+            to: edge01/acme.sh
+            # The Cloudflare API token, the Let's Encrypt account key, and the
+            # per-domain config that records which zone each name lives in.
+            exclude:
+                - /acme.sh.log # rotates, and holds nothing a restore needs
 
     # ----------------------------------------------------------- k3s server
     # The cluster's identity, which nothing else here covers and git cannot.
