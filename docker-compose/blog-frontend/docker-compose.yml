@@ -4,8 +4,12 @@ services:
         image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
         restart: unless-stopped
         ports:
-            # 이 호스트 주소로만 공개한다. 엣지(edge01·prd01)만 붙으면 된다.
-            - "192.168.219.100:8090:80"
+            # 이 호스트의 LAN 주소로만 공개한다. 엣지(edge01·prd01)만 붙으면 된다.
+            # 주소를 박아두면 스택이 다른 호스트로 옮겨가는 순간 바인딩이 실패한다 —
+            # 2026-09-09 prd01 -> app01 이관에서 실제로 걸렸다. .env 로 뽑되
+            # 기본값은 두지 않는다: 값이 없으면 compose 가 거부하는 편이,
+            # 0.0.0.0 으로 조용히 넓어지는 것보다 낫다.
+            - "${BLOG_FRONTEND_BIND}:8090:80"
         volumes:
             # scripts/deploy.sh 가 이 디렉터리에 직접 굽는다 — 빌드가 곧 배포다.
             # 컨테이너는 읽기만 하므로 재기동 없이 새 산출물이 바로 반영된다.
