@@ -76,7 +76,5 @@ spec:
           type: RuntimeDefault
       serviceAccountName: infisical-secre-controller-manager
       terminationGracePeriodSeconds: 10
-      nodeSelector: 
-        kubernetes.io/hostname: mgmt01
       tolerations: 
         []

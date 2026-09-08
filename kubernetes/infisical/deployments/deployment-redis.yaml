@@ -23,7 +23,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: mgmt01
       securityContext:
         fsGroup: 999
       initContainers:

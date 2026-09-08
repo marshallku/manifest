@@ -2,7 +2,7 @@
 
 Second cloudflared instance dedicated to the **sssup** Cloudflare account, which holds the `maji.you` and `irang.me` zones (and any future sssup-related zones). The original [`cloudflared/`](../cloudflared/) deployment serves the `marshallku.dev` account; tunnels are account-scoped so a separate pod with its own token is needed for any other account's zones, but one cloudflared instance can handle every zone on the same account.
 
-Pinned to `mgmt01`. Public hostnames (ingress rules) are managed in the Cloudflare Zero Trust dashboard, not in this manifest — the deployment runs in token-based "remotely managed" mode.
+Public hostnames (ingress rules) are managed in the Cloudflare Zero Trust dashboard, not in this manifest — the deployment runs in token-based "remotely managed" mode.
 
 ## Layout
 
@@ -80,5 +80,5 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://dev.maji.you                  
 ## Notes
 
 - The deployment Kind=`Deployment` with `name: cloudflared`. The namespace (`cloudflared-sssup`) is what differentiates this from the marshallku.dev instance — same resource name is fine because the namespaces are different.
-- Both cloudflared pods land on `mgmt01`. Memory limit is 128Mi each; combined footprint is negligible.
+- Memory limit is 128Mi per cloudflared pod; combined footprint is negligible.
 - If a new maji.you subdomain is added later, only the dashboard needs updating — no manifest change.

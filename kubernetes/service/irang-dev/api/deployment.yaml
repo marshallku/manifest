@@ -17,8 +17,6 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-secret
-      nodeSelector:
-        kubernetes.io/hostname: dev01
       # Native sidecar pattern (k8s 1.29+). kagi-serve is declared as an
       # initContainer with restartPolicy: Always so k8s starts it BEFORE
       # the api container and keeps it running. Without this, api boots

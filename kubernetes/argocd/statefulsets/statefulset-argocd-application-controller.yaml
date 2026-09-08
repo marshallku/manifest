@@ -329,7 +329,6 @@ spec:
           workingDir: /home/argocd
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: mgmt01
       serviceAccountName: argocd-application-controller
       volumes:
         - emptyDir: {}

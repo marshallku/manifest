@@ -367,7 +367,6 @@ spec:
               name: argocd-cmd-params-cm
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: mgmt01
       serviceAccountName: argocd-server
       volumes:
         - emptyDir: {}

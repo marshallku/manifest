@@ -9,7 +9,7 @@ cluster. It replaces the hand-copied `namespace/deployment/service` YAML that
 
 | Resource | Per | Notes |
 | --- | --- | --- |
-| `Deployment` | surface | `imagePullSecrets: ghcr-secret`, `nodeSelector dev01`, probes, resources |
+| `Deployment` | surface | `imagePullSecrets: ghcr-secret`, probes, resources |
 | `Service` (ClusterIP) | surface | no more manual NodePort allocation |
 | `Ingress` | surface **with `host`** | `ingressClassName: cloudflare-tunnel` → tunnel + DNS auto-wired |
 | `InfisicalSecret` | app (opt-in) | syncs the Infisical project into `<app>-secret` |

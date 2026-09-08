@@ -16,8 +16,6 @@ spec:
             labels:
                 app: loki
         spec:
-            nodeSelector:
-                kubernetes.io/hostname: mgmt01
             initContainers:
                 - name: init-chown
                   image: busybox:1.37

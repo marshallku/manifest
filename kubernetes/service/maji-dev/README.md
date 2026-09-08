@@ -9,7 +9,7 @@ Development environment for [`maji`](../maji/), running parallel on the same clu
 - **R2 bucket** — `maji-dev` (prod uses `maji-prod` after the bucket rename), served via `c1-dev.maji.you`
 - **Secret backend** — Infisical (vs sealed-secret in prod)
 
-Same node placement (`dev01`), same image registry. OAuth apps are **separate** (dev-only Kakao/Google clients) so dev tokens never authenticate against prod.
+Same image registry. OAuth apps are **separate** (dev-only Kakao/Google clients) so dev tokens never authenticate against prod.
 
 ## Layout
 

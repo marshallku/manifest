@@ -15,8 +15,6 @@ spec:
             labels:
                 app: grafana
         spec:
-            nodeSelector:
-                kubernetes.io/hostname: mgmt01
             securityContext:
                 fsGroup: 472
                 runAsUser: 472

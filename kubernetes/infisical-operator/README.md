@@ -5,7 +5,6 @@ Kubernetes operator that reconciles `InfisicalSecret` (and related) CRs into nat
 Rendered from `infisical-helm-charts/secrets-operator` chart `v0.10.33` with these overrides:
 
 - `hostAPI=http://infisical.infisical.svc.cluster.local:8080/api` — points the operator at the in-cluster Infisical instead of `app.infisical.com`.
-- `controllerManager.nodeSelector.kubernetes.io/hostname=mgmt01` — pinned alongside Infisical itself.
 - `scopedNamespaces=[maji-dev]` + `scopedRBAC=true` — the operator only watches and writes into `maji-dev`. The manager runs with a namespaced `Role` (in `maji-dev`), not a `ClusterRole`, so it cannot mutate Secrets anywhere else. To extend coverage to another namespace, add it to `scopedNamespaces` and re-render.
 
 ## Layout
@@ -25,7 +24,7 @@ infisical-operator/
 │   ├── metrics-auth-rbac.yaml           # ClusterRole — only for /metrics endpoint authn, no secret access
 │   └── metrics-reader-rbac.yaml
 ├── services/metrics-service.yaml
-└── deployments/deployment.yaml          # 1 replica, mgmt01
+└── deployments/deployment.yaml          # 1 replica
 ```
 
 ## Apply
@@ -73,7 +72,6 @@ helm template infisical-secrets-operator infisical-helm-charts/secrets-operator 
   --namespace infisical-operator \
   --include-crds \
   --set hostAPI=http://infisical.infisical.svc.cluster.local:8080/api \
-  --set 'controllerManager.nodeSelector.kubernetes\.io/hostname=mgmt01' \
   --set 'scopedNamespaces[0]=maji-dev' \
   --set scopedRBAC=true \
   --output-dir /tmp/render

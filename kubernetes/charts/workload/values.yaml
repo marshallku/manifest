@@ -15,9 +15,10 @@ createNamespace: true
 # Image pull secret present in every app namespace (GHCR).
 imagePullSecret: ghcr-secret
 
-# Where app pods run. Matches the existing house convention (dev01 node).
-nodeSelector:
-  kubernetes.io/hostname: dev01
+# Where app pods run. Empty means "wherever the scheduler puts it", which is
+# what a single-node cluster wants — a hostname pin there is a way to make a
+# pod unschedulable the day the node is renamed, and buys nothing.
+nodeSelector: {}
 
 # IngressClass wired to the Cloudflare Tunnel ingress controller. Setting a
 # surface `host` below is all it takes to get a public subdomain + DNS.

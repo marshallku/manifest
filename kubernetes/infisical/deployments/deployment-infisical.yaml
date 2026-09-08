@@ -26,7 +26,6 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: mgmt01
       containers:
         - name: infisical
           image: infisical/infisical:v0.159.25

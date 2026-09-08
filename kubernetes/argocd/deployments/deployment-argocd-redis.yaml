@@ -74,7 +74,6 @@ spec:
               type: RuntimeDefault
       nodeSelector:
         kubernetes.io/os: linux
-        kubernetes.io/hostname: mgmt01
       securityContext:
         runAsNonRoot: true
         runAsUser: 999

@@ -16,8 +16,6 @@ spec:
             labels:
                 app: prometheus
         spec:
-            nodeSelector:
-                kubernetes.io/hostname: mgmt01
             serviceAccountName: prometheus
             initContainers:
                 - name: init-chown

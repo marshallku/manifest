@@ -1,6 +1,6 @@
 # Infisical
 
-Self-hosted secret manager. Pinned to `mgmt01` alongside ArgoCD.
+Self-hosted secret manager, deployed alongside ArgoCD.
 
 ## Layout
 
@@ -113,13 +113,16 @@ Add a public hostname route in the existing Cloudflare tunnel pointing to `http:
 
 ## Node placement
 
-All workloads land on `mgmt01`:
+The pods carry no `nodeSelector` — the scheduler places them, which is what a
+single-node cluster wants.
 
-- `nodeSelector: kubernetes.io/hostname: mgmt01` on every pod
-- `hostPath` PVs for postgres + redis bound to mgmt01 via `nodeAffinity`
-- Same node as ArgoCD, cloudflared, and the monitoring stack (the sealed-secrets controller in `kube-system` has no node pin and may schedule elsewhere)
+What *is* still node-bound is storage: the `hostPath` PVs for postgres + redis
+carry a `nodeAffinity`, because a `local`/`hostPath` PV is meaningless without
+one. Those are the only place a node name appears, and they must name the node
+the data actually sits on.
 
-The hostPath dirs (`/mnt/hdd/data/mgmt01/infisical/postgres`, `…/redis`) are auto-created by the `DirectoryOrCreate` PV. The postgres/redis init containers chown them to uid 999.
+The hostPath dirs are auto-created by the `DirectoryOrCreate` PV. The
+postgres/redis init containers chown them to uid 999.
 
 ## Migrating sealed-secrets → Infisical
 

@@ -11,7 +11,7 @@ Development environment for [`irang`](../irang/). Differs from prd only in:
 - **Infisical project** — `irang-dev` (env slug `dev`), separate from `irang-prd`
 - **OAuth / wrapper / tokens** — none (admin-only, no user-facing OAuth)
 
-Same node placement (`dev01`), same image registry, same cloudflared (`cloudflared-sssup` — shared tunnel handles both `irang.me` and `dev.irang.me` subdomains since `irang.me` is on the sssup Cloudflare account).
+Same image registry, same cloudflared (`cloudflared-sssup` — shared tunnel handles both `irang.me` and `dev.irang.me` subdomains since `irang.me` is on the sssup Cloudflare account).
 
 ## Bootstrap
 
