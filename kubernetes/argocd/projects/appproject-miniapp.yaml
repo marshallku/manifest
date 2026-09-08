@@ -1,0 +1,24 @@
+# AppProject, exported from the live cluster on 2026-09-08. These existed only
+# in the cluster until now — nothing in git recreated them, so a rebuild would
+# have left every Application referencing a project that does not exist.
+#
+# argocd/ is applied by hand (no Application watches it), so these are real
+# manifests rather than .example files.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: miniapp
+  namespace: argocd
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  destinations:
+  - name: '*'
+    namespace: '*'
+    server: '*'
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  sourceRepos:
+  - '*'

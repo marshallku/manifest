@@ -13,7 +13,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   hostPath:
-    path: /mnt/hdd/data/mgmt01/infisical/postgres
+    path: /var/lib/k3s-data/infisical/postgres
     type: DirectoryOrCreate
   nodeAffinity:
     required:
@@ -22,7 +22,7 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - mgmt01
+                - k3s01
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

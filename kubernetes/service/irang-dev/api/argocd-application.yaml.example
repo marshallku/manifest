@@ -1,0 +1,24 @@
+# Register irang-api-dev with ArgoCD (run once, manually — Application CRs
+# are not synced from this repo). `.example` so the Application that watches
+# this directory does not try to apply it (it ignores *.yaml.example).
+#
+#   kubectl apply -f kubernetes/service/irang-dev/api/argocd-application.yaml.example
+#
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: irang-api-dev
+  namespace: argocd
+spec:
+  destination:
+    namespace: irang-dev
+    server: https://kubernetes.default.svc
+  project: miniapp
+  source:
+    path: kubernetes/service/irang-dev/api
+    repoURL: https://github.com/marshallku/manifest.git
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

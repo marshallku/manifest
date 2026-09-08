@@ -31,7 +31,10 @@ spec:
                       - --config.file=/etc/prometheus/prometheus.yml
                       - --storage.tsdb.path=/prometheus
                       - --storage.tsdb.retention.time=90d
-                      - --storage.tsdb.retention.size=18GB
+                      # 18GB on mgmt01 sat on a dedicated data disk; on k3s01 this PV is
+                      # on the ROOT filesystem, where filling it takes the whole
+                      # single-node cluster down rather than just monitoring.
+                      - --storage.tsdb.retention.size=8GB
                       - --web.enable-lifecycle
                   ports:
                       - name: http

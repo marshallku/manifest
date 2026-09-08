@@ -5,7 +5,7 @@ Kubernetes operator that reconciles `InfisicalSecret` (and related) CRs into nat
 Rendered from `infisical-helm-charts/secrets-operator` chart `v0.10.33` with these overrides:
 
 - `hostAPI=http://infisical.infisical.svc.cluster.local:8080/api` — points the operator at the in-cluster Infisical instead of `app.infisical.com`.
-- `scopedNamespaces=[maji-dev]` + `scopedRBAC=true` — the operator only watches and writes into `maji-dev`. The manager runs with a namespaced `Role` (in `maji-dev`), not a `ClusterRole`, so it cannot mutate Secrets anywhere else. To extend coverage to another namespace, add it to `scopedNamespaces` and re-render.
+- `scopedNamespaces=[maji-dev, irang-dev]` + `scopedRBAC=true` — the operator only watches and writes into those two namespaces. The manager runs with a namespaced `Role` in each, not a `ClusterRole`, so it cannot mutate Secrets anywhere else. To extend coverage to another namespace, add it to `scopedNamespaces` and re-render.
 
 ## Layout
 
@@ -73,6 +73,7 @@ helm template infisical-secrets-operator infisical-helm-charts/secrets-operator 
   --include-crds \
   --set hostAPI=http://infisical.infisical.svc.cluster.local:8080/api \
   --set 'scopedNamespaces[0]=maji-dev' \
+  --set 'scopedNamespaces[1]=irang-dev' \
   --set scopedRBAC=true \
   --output-dir /tmp/render
 ```
