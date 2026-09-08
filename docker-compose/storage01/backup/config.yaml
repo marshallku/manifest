@@ -60,6 +60,14 @@ sources:
         # `rsync --daemon` are all refused.
         privilege: sudo-rsync
 
+    k3s01:
+        ssh: marshall@192.168.219.193
+        # The single-node cluster the 3-node one collapsed into on 2026-09-09.
+        # Same send-only `sudo rsync` grant as prd01, installed by the guest
+        # bootstrap rather than by hand, plus the datastore-snapshot helper the
+        # job below needs.
+        privilege: sudo-rsync
+
     edge01:
         ssh: marshall@192.168.219.192
         # Same send-only `sudo rsync` grant as prd01 — /etc/nginx/ssl and
@@ -284,7 +292,7 @@ jobs:
     # recreated from its original source, the cluster CA is gone so no agent can
     # rejoin, and the join token is gone with it.
     - name: k3s-server
-      source: prd01
+      source: k3s01
       paths:
           - from: /var/lib/rancher/k3s/server
             to: k3s/server
