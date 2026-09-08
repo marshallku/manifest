@@ -7,3 +7,4 @@ metadata:
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/component: applicationset-controller
   name: argocd-applicationset-controller
+  namespace: argocd
