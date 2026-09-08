@@ -218,8 +218,10 @@ jobs:
             #     killed run would break every subsequent run until cleaned.
             tmp: /mnt/hdd/tmp/n8n-database.sqlite
 
-    # --------------------------------------------------------- misc on prd01
-    # Small, file-only services with no database of their own.
+    # ------------------------------------------------------- misc, by host
+    # Small, file-only services with no database of their own. This used to be
+    # one job on prd01; the hosts split on 2026-09-09.
+    #
     # ------------------------------------------------------------- app01 misc
     # Two of the four paths `prd01-misc` used to carry moved to app01 on
     # 2026-09-09 (mrry.me and portainer), so that job split rather than moved.
