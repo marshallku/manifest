@@ -58,10 +58,19 @@ def test_the_real_config_loads():
     from pathlib import Path
 
     parsed = cfg.load(Path(__file__).resolve().parents[1] / "config.yaml")
-    assert len(parsed.jobs) == 10
+    assert len(parsed.jobs) == 11
     assert {j.bundle for j in parsed.jobs} == {
         "blog", "dongjoo", "n8n", "misc", "miniflux", "infisical", "storage01", "k3s",
-        "db01", "edge01",
+        "db01", "edge01", "app01",
+    }
+    # Every job has to name a host that still holds the data. The whole point of
+    # moving `source` in the same change as the stack is that a job left behind
+    # keeps succeeding against a stale copy, which is worse than failing.
+    assert {j.name: j.source for j in parsed.jobs} == {
+        "blog": "app01", "dongjoo": "app01", "n8n": "app01", "app01-misc": "app01",
+        "prd01-misc": "prd01", "miniflux-cold": "prd01",
+        "infisical": "k3s", "edge01": "edge01", "k3s-server": "k3s01",
+        "storage01-db": "storage01", "db01": "db01",
     }
 
 

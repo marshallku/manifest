@@ -68,6 +68,14 @@ sources:
         # job below needs.
         privilege: sudo-rsync
 
+    app01:
+        ssh: marshall@192.168.219.194
+        # The compose host prd01 emptied into on 2026-09-09. Same send-only
+        # `sudo rsync` grant, installed by the guest bootstrap. `marshall` is in
+        # the docker group there, so the dump engines can `docker exec` without
+        # any further privilege.
+        privilege: sudo-rsync
+
     edge01:
         ssh: marshall@192.168.219.192
         # Same send-only `sudo rsync` grant as prd01 — /etc/nginx/ssl and
@@ -117,7 +125,7 @@ sources:
 jobs:
     # ------------------------------------------------------------------ blog
     - name: blog
-      source: prd01
+      source: app01
       paths:
           - from: /mnt/hdd/data/blog-backend
             to: blog/files
@@ -141,8 +149,15 @@ jobs:
                 password_env: MONGO_INITDB_ROOT_PASSWORD
 
     # ------------------------------------------------------------ dongjoo.me
+    # ⚠️ This bundle got SMALLER on 2026-09-09 and that is deliberate.
+    # `/mnt/hdd/data/dongjoo.me/html` was NOT carried to app01: the 2026-09-06
+    # audit found at least four independent backdoors in that document root and
+    # the plan is a full rebuild, so copying it onto a clean host would have been
+    # the wrong move. It still exists on prd01 and in every ZFS snapshot taken
+    # before this date, which is where to look if the rebuild needs a reference.
+    # What moved: the MySQL datadir (dumped below) and the `dorp` theme.
     - name: dongjoo
-      source: prd01
+      source: app01
       paths:
           - from: /mnt/hdd/data/dongjoo.me
             to: dongjoo/files
@@ -166,7 +181,7 @@ jobs:
     # live WAL database is not a backup — the main file, -wal and -shm are only
     # meaningful together and only at a moment no writer is mid-commit.
     - name: n8n
-      source: prd01
+      source: app01
       paths:
           - from: /mnt/hdd/data/n8n
             to: n8n/files
@@ -205,15 +220,29 @@ jobs:
 
     # --------------------------------------------------------- misc on prd01
     # Small, file-only services with no database of their own.
+    # ------------------------------------------------------------- app01 misc
+    # Two of the four paths `prd01-misc` used to carry moved to app01 on
+    # 2026-09-09 (mrry.me and portainer), so that job split rather than moved.
+    #
+    # These land under `app01/`, NOT under `misc/`, because a bundle is the one
+    # top-level directory a job owns and two jobs writing into the same one
+    # would overwrite each other's manifest.json — the runner rejects it
+    # outright. The bundle name follows the host, like storage01/db01/edge01.
+    - name: app01-misc
+      source: app01
+      paths:
+          - from: /mnt/hdd/data/mrry.me
+            to: app01/mrry.me
+          - from: /mnt/hdd/data/portainer
+            to: app01/portainer
+
+    # `adguard-home` is still on prd01 until the DNS handover, and `notes` has no
+    # running stack at all — cold data that never left.
     - name: prd01-misc
       source: prd01
       paths:
           - from: /mnt/hdd/data/adguard-home
             to: misc/adguard-home
-          - from: /mnt/hdd/data/mrry.me
-            to: misc/mrry.me
-          - from: /mnt/hdd/data/portainer
-            to: misc/portainer
           - from: /mnt/hdd/data/notes
             to: misc/notes
 
