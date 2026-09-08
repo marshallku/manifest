@@ -40,7 +40,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 KUMA_DB = os.environ.get("KUMA_DB", "/kuma/kuma.db")
-PROM_URL = os.environ.get("PROM_URL", "http://192.168.219.100:30090")
+PROM_URL = os.environ.get("PROM_URL", "http://192.168.219.193:30090")
 REFRESH_SEC = int(os.environ.get("REFRESH_SEC", "30"))
 PROM_TIMEOUT = float(os.environ.get("PROM_TIMEOUT", "4"))
 LISTEN = os.environ.get("LISTEN", "0.0.0.0")

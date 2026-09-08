@@ -80,7 +80,7 @@ footer. `up + down_listed + unsettled` accounts for every active monitor.
 | `STATUS_TOKEN` | *(required)* | Bearer token the display must present; min 16 chars. Empty refuses to start |
 | `STATUS_ALLOW_ANONYMOUS` | unset | `1` to deliberately serve without auth. Warns on every start |
 | `KUMA_DB` | `/kuma/kuma.db` | Kuma SQLite database, mounted read-only |
-| `PROM_URL` | `http://192.168.219.100:30090` | Prometheus NodePort on prd01 |
+| `PROM_URL` | `http://192.168.219.193:30090` | Prometheus NodePort on k3s01 |
 | `REFRESH_SEC` | `30` | Snapshot rebuild interval |
 | `PROM_TIMEOUT` | `4` | Per-query timeout, seconds |
 | `STALE_AFTER_SEC` | `180` | Age at which `stale` flips true |

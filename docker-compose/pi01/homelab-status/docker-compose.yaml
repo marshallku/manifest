@@ -29,7 +29,7 @@ services:
             - .env
         environment:
             # In-cluster Prometheus, reached over the LAN on its NodePort.
-            - PROM_URL=http://192.168.219.100:30090
+            - PROM_URL=http://192.168.219.193:30090
             - KUMA_DB=/kuma/kuma.db
             - REFRESH_SEC=30
             # The device shows a STALE banner past this age. Keep it a few
