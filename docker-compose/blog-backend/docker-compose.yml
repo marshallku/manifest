@@ -38,5 +38,10 @@ services:
 
 networks:
     app_network:
+        # 손으로 만들어야 한다 — compose 가 만들지 않는다:
+        #     docker network create app_network
+        # 이 스택 말고는 아무도 붙어 있지 않아서(prd01 에서 containers=0) 실제로
+        # 값을 하는 건 없지만, 없으면 `up` 이 "declared as external, but could not
+        # be found" 로 거부한다. 2026-09-09 app01 이관에서 그렇게 막혔다.
         external: true
     internal_network:
