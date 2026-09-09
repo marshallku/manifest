@@ -83,7 +83,7 @@ Two manual steps on the router; neither can be done from this repo.
    server that can change address is not a backup. The Prometheus target and
    the `REPLICA_URL` in `.env` both hardcode it.
 2. **Secondary DNS** in the DHCP settings:
-   `DNS1 = 192.168.219.100`, `DNS2 = 192.168.219.127`.
+   `DNS1 = 192.168.219.194`, `DNS2 = 192.168.219.127`.
 
 > pi01 is dual-homed — `eth0` at `.127` and `wlan0` at `.106`, both DHCP.
 > AdGuard binds `0.0.0.0`, so it answers on either, but only `.127` is pinned
@@ -102,9 +102,9 @@ watch things *from outside* the cluster:
 
 | Monitor | Type | Target |
 | --- | --- | --- |
-| prd01 host | Ping | 192.168.219.100 |
-| k3s API | TCP Port | 192.168.219.100:6443 |
-| Primary DNS | DNS | resolve `example.com` via 192.168.219.100 |
+| app01 host | Ping | 192.168.219.194 |
+| k3s API | TCP Port | 192.168.219.193:6443 |
+| Primary DNS | DNS | resolve `example.com` via 192.168.219.194 |
 | ArgoCD / Grafana | HTTP(s) | the in-cluster ingress URLs |
 | Public site | HTTP(s) | through Cloudflare, to catch tunnel failures |
 
@@ -124,6 +124,6 @@ curl -su "$REPLICA_USERNAME:$REPLICA_PASSWORD" \
   http://192.168.219.127:3080/control/filtering/status | head
 
 # then the real test — stop the primary and confirm clients keep resolving
-ssh marshall@192.168.219.100 'docker stop adguardhome'
-ssh marshall@192.168.219.100 'docker start adguardhome'
+ssh marshall@192.168.219.194 'docker stop adguardhome'
+ssh marshall@192.168.219.194 'docker start adguardhome'
 ```

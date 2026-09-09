@@ -50,16 +50,6 @@ destination:
         dataset: tank/backup/hosts
 
 sources:
-    prd01:
-        ssh: marshall@192.168.219.100
-        # `rsync --rsync-path="sudo rsync"`. prd01's sudo needs a password in
-        # general, but /etc/sudoers grants exactly:
-        #     marshall ALL=(root) NOPASSWD: /usr/bin/rsync --server --sender *
-        # `--server --sender` is rsync's send-only mode, so this reads any file
-        # as root and can write none. Verified: push, `cat /etc/shadow` and
-        # `rsync --daemon` are all refused.
-        privilege: sudo-rsync
-
     k3s01:
         ssh: marshall@192.168.219.193
         # The single-node cluster the 3-node one collapsed into on 2026-09-09.
@@ -239,15 +229,8 @@ jobs:
             to: app01/portainer
           - from: /mnt/hdd/data/notes
             to: app01/notes
-
-    # All that is left here is AdGuard, which stays on prd01 until the DNS
-    # handover (the router still has to stop handing out prd01's address). When
-    # it moves, this job goes with it and `prd01` stops being a source at all.
-    - name: prd01-misc
-      source: prd01
-      paths:
           - from: /mnt/hdd/data/adguard-home
-            to: misc/adguard-home
+            to: app01/adguard-home
 
     # -------------------------------------------------------------- miniflux
     # ⚠️ Cold data, and only correct while it stays cold.
