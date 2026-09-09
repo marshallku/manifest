@@ -237,16 +237,17 @@ jobs:
             to: app01/mrry.me
           - from: /mnt/hdd/data/portainer
             to: app01/portainer
+          - from: /mnt/hdd/data/notes
+            to: app01/notes
 
-    # `adguard-home` is still on prd01 until the DNS handover, and `notes` has no
-    # running stack at all — cold data that never left.
+    # All that is left here is AdGuard, which stays on prd01 until the DNS
+    # handover (the router still has to stop handing out prd01's address). When
+    # it moves, this job goes with it and `prd01` stops being a source at all.
     - name: prd01-misc
       source: prd01
       paths:
           - from: /mnt/hdd/data/adguard-home
             to: misc/adguard-home
-          - from: /mnt/hdd/data/notes
-            to: misc/notes
 
     # -------------------------------------------------------------- miniflux
     # ⚠️ Cold data, and only correct while it stays cold.
@@ -261,7 +262,7 @@ jobs:
     # the rest of this file exists to prevent: rsync of a live datadir. Convert
     # it to a pg_dump job at that moment, not after the first bad restore.
     - name: miniflux-cold
-      source: prd01
+      source: app01
       paths:
           - from: /mnt/hdd/data/miniflux
             to: miniflux/files

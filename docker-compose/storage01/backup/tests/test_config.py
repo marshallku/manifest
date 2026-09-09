@@ -68,7 +68,7 @@ def test_the_real_config_loads():
     # keeps succeeding against a stale copy, which is worse than failing.
     assert {j.name: j.source for j in parsed.jobs} == {
         "blog": "app01", "dongjoo": "app01", "n8n": "app01", "app01-misc": "app01",
-        "prd01-misc": "prd01", "miniflux-cold": "prd01",
+        "prd01-misc": "prd01", "miniflux-cold": "app01",
         "infisical": "k3s", "edge01": "edge01", "k3s-server": "k3s01",
         "storage01-db": "storage01", "db01": "db01",
     }
