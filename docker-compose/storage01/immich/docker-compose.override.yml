@@ -31,3 +31,26 @@ services:
         volumes:
             - /var/lib/homelab/immich/thumbs:/data/thumbs
             - /var/lib/homelab/immich/encoded-video:/data/encoded-video
+
+    # Face recognition and CLIP embeddings ran on CPU over 172 GB of photos until
+    # the GTX 1060 reached this VM (2026-09-10).
+    #
+    # The card is Pascal (compute 6.1), which is the thing to check before
+    # switching: cuDNN dropped Maxwell/Pascal/Volta in 9.11, and upstream's CUDA
+    # image pins `libcudnn9-cuda-12=9.10.2.21` — deliberately the last release that
+    # still covers this card. Verify that pin still holds when bumping
+    # IMMICH_VERSION, because the tag alone does not tell you.
+    immich-machine-learning:
+        image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}-cuda
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        # ⚠️ 3GB of VRAM, shared with Jellyfin's NVENC (see
+        # ../jellyfin/docker-compose.yaml). Inference here plus two simultaneous
+        # 4K HEVC transcodes can exhaust it, and NVENC fails rather than falling
+        # back to software — so watch `nvidia-smi` the first time both are under
+        # real load together.

@@ -34,9 +34,21 @@ services:
             # Read-only: Jellyfin never needs to write into the library, and this
             # removes any path by which a library scan can damage the originals.
             - /mnt/media:/media:ro
-        # No GPU passthrough yet. The host has a GTX 1060 (Pascal, NVENC-capable)
-        # but passing it through binds it to this VM exclusively, and the E5-2696
-        # v3's 36 threads handle several 1080p software transcodes — while iOS
-        # clients (Jellyfin app, Infuse) direct-play most files and never reach
-        # the transcoder at all. Revisit only if transcoding is measured to be
-        # the bottleneck; adding it later costs one VM reboot.
+        # The GTX 1060 (Pascal, NVENC) reached this VM on 2026-09-10 — the card was
+        # already sitting in pve02 doing nothing, so the earlier reasoning ("the
+        # CPU copes, and passthrough binds the card to one VM") no longer costs
+        # anything: nothing else wants it.
+        #
+        # This block only grants ACCESS. Jellyfin still has to be told to use it,
+        # in Dashboard -> Playback -> Hardware acceleration (NVENC), which lives in
+        # /config/encoding.xml and is application state, not compose.
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        # ⚠️ 3GB of VRAM, shared with Immich's ML. Two simultaneous 4K HEVC
+        # transcodes can exhaust it; NVENC then fails rather than falling back, so
+        # watch `nvidia-smi` the first time both are under real load.
