@@ -10,11 +10,20 @@ metadata:
   labels:
     {{- include "workload.labels" (dict "root" $root "surface" $name) | nindent 4 }}
 spec:
-  type: ClusterIP
+  # A surface with `nodePort` is reachable on every node's address, which is how
+  # edge01 fronts a tier C service. Without it the Service stays
+  # cluster-internal and the only way out is a tunnel Ingress (`host`), which
+  # publishes to the internet — wrong for anything that belongs behind the
+  # tailnet. argocd, vault and grafana already reach edge01 this way, just
+  # outside the factory.
+  type: {{ if $surface.nodePort }}NodePort{{ else }}ClusterIP{{ end }}
   ports:
     - port: {{ $surface.port }}
       targetPort: {{ $surface.port }}
       protocol: TCP
+      {{- with $surface.nodePort }}
+      nodePort: {{ . }}
+      {{- end }}
   selector:
     app: {{ $root.Values.app }}-{{ $name }}
 {{- end }}

@@ -25,6 +25,25 @@ surfaces:
     host: cooking.marshallku.dev        # <- this line = public subdomain + DNS
 ```
 
+## Not public: a tier C surface
+
+A surface with no `host` gets no Ingress and stays cluster-internal. Adding
+`nodePort` makes it reachable on every node's address instead, which is how
+`edge01` fronts the admin UIs that must not leave the tailnet.
+
+```yaml
+surfaces:
+  web:
+    image: ghcr.io/marshallku/dash:latest
+    port: 8080
+    nodePort: 30800        # no host: -> no tunnel, no public DNS
+```
+
+Pair it with an nginx server block on `edge01` under `*.in.marshallku.dev`,
+which is a DNS-only wildcard at the tailnet address — so this costs a server
+block and no DNS work. Setting `host` *and* `nodePort` publishes the service
+through the tunnel as well; that is almost never what a tier C surface wants.
+
 ## Full example (web + api + secret + db)
 
 ```yaml

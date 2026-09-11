@@ -34,6 +34,8 @@ surfaces: {}
   #   image: ghcr.io/marshallku/example-web:latest   # required
   #   port: 3000                                      # required
   #   host: example.marshallku.dev                    # optional -> public Ingress
+  #   nodePort: 30800                                 # optional -> NodePort instead,
+  #                                                   #   for a tier C service fronted by edge01
   #   replicas: 1
   #   healthPath: /                                   # probe path (default "/")
   #   env:                                            # plain env vars
