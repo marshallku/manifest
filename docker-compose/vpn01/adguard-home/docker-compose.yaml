@@ -23,6 +23,12 @@ services:
         # queries to that stub. A bridge would put the listener in another
         # namespace where the host's loopback cannot reach it.
         network_mode: host
+        # 고정 cgroup. 이 인스턴스의 upstream 질의는 자기가 만든 연결이라 forward 를
+        # 타지 않으므로, 호스트의 킬 스위치(FORWARD 훅)가 못 잡는다. 터널이 죽으면
+        # DoH 가 그대로 집 회선으로 나가 "무엇을 찾으려 했는지"만 ISP 에 남는다.
+        # vpn01 의 nftables output 훅이 이 슬라이스를 지목해 터널 전용으로 잠근다 —
+        # 컨테이너 id 는 재생성 때마다 바뀌지만 이 슬라이스 이름은 그대로다.
+        cgroup_parent: vpn01-resolver.slice
         volumes:
             - /var/lib/homelab/adguard-home/work:/opt/adguardhome/work
             - /var/lib/homelab/adguard-home/conf:/opt/adguardhome/conf

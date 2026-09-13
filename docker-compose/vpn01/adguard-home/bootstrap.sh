@@ -145,8 +145,20 @@ set_upstreams() {
     # content-type application/json not allowed". The install call above can use
     # stdin only because that endpoint is unauthenticated. argv is acceptable
     # here — this payload is configuration, not a credential.
+    # disable_ipv6: 이 인스턴스는 AAAA 를 돌려주지 않는다.
+    # (API 키는 `disable_ipv6` 다 — 같은 설정의 YAML 쪽 이름 `aaaa_disabled` 를 보내면
+    #  조용히 무시된다. dns_info 가 그 키를 안 돌려주는 것으로만 알 수 있다.)
+    #
+    # 집 회선에는 IPv6 default 가 없어서 폰은 평소 v4 전용인데, exit node 를 켜면
+    # AdGuard 터널이 v6 출구를 얹어준다. 그 v6(2a02:6ea0:…)는 v4 출구(156.146.…)와
+    # 다른 네트워크라, 브라우저가 Happy Eyeballs 로 둘 사이를 오가면 Cloudflare 가
+    # 챌린지 발급 IP 와 검증 IP 를 다르게 보고 인증 루프에 빠진다.
+    #
+    # 방화벽으로 v6 를 거부해봤더니 더 나빴다 — 클라이언트가 v6 를 **시도한 뒤**
+    # 1초쯤 걸려 실패하므로, iOS 처럼 v6 를 선호하는 쪽에서는 많은 페이지가 그냥
+    # 안 열린다. 답을 주지 않으면 시도 자체가 없어 지연도 실패도 없다.
     api POST /control/dns_config \
-        "{\"upstream_dns\":${UPSTREAM_DNS_JSON},\"bootstrap_dns\":${BOOTSTRAP_DNS_JSON}}"
+        "{\"upstream_dns\":${UPSTREAM_DNS_JSON},\"bootstrap_dns\":${BOOTSTRAP_DNS_JSON},\"disable_ipv6\":true}"
 }
 
 # Credentials go in via curl's stdin config rather than -u, because argv is
