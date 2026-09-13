@@ -1,0 +1,65 @@
+# AdGuard Home — resolver for Tailscale exit-node clients (host: vpn01).
+#
+# vpn01 is the exit node whose egress rides the AdGuard VPN tunnel. Tailscale
+# routes an exit-node client's DNS to the exit node's system resolver, so this
+# instance is what the phone actually resolves with while the exit node is on.
+# Its whole reason to exist is that its upstream leaves through the tunnel: the
+# LAN primary (app01) would filter just as well but would resolve over the home
+# ISP, which is the leg domestic DNS blocking and injection act on.
+#
+# Same filter lists as the primary, kept in step by adguardhome-sync.
+# First-time setup: ./bootstrap.sh (mirrors ../../pi01/adguard-home).
+
+services:
+    adguardhome:
+        image: adguard/adguardhome:v0.107.71 # keep in lockstep with the primary
+        container_name: adguardhome
+        restart: unless-stopped
+        # Host networking, like the pi01 replica. Behind a bridge every query
+        # arrives from the docker gateway address, which flattens per-client
+        # statistics. Here it matters for a second reason: the instance binds
+        # loopback only (127.0.0.1:53, see bootstrap.sh) so that systemd-resolved
+        # keeps its own stub on 127.0.0.53 — tailscaled hands exit-node client
+        # queries to that stub. A bridge would put the listener in another
+        # namespace where the host's loopback cannot reach it.
+        network_mode: host
+        volumes:
+            - /var/lib/homelab/adguard-home/work:/opt/adguardhome/work
+            - /var/lib/homelab/adguard-home/conf:/opt/adguardhome/conf
+
+    adguardhome-sync:
+        image: ghcr.io/bakito/adguardhome-sync:v0.9.2
+        container_name: adguardhome-sync
+        restart: unless-stopped
+        depends_on:
+            - adguardhome
+        # Host networking here too, unlike the pi01 replica. The AdGuard instance
+        # binds loopback for DNS, and this lets the sync job reach its UI over
+        # 127.0.0.1 as well — so the replica credentials never cross the LAN.
+        # On a bridge, 127.0.0.1 would be the container's own loopback and the
+        # sync job fails with "connection refused" against :3080.
+        network_mode: host
+        env_file:
+            - .env
+        environment:
+            - TZ=Asia/Seoul
+        command:
+            - run
+            - "--cron=*/10 * * * *"
+            - --continueOnError
+            - --api-port=0
+            # DHCP must never be replicated: two servers handing out competing
+            # leases is a network-wide outage. Neither instance serves DHCP today
+            # (the router does); this is a guard against someone flipping it in
+            # the UI without thinking about the replicas.
+            - --feature-dhcp-server-config=false
+            - --feature-dhcp-static-leases=false
+            # 🚨 The one that makes this replica different from pi01's. DNS server
+            # config includes upstream_dns, and the origin's upstream resolves
+            # over the home link. Copying it here would send this instance's
+            # queries back out the ISP and defeat the entire point of running
+            # AdGuard on the exit node. bootstrap.sh pins the upstream instead.
+            - --feature-dns-server-config=false
+            # Short local retention; the primary keeps the long record.
+            - --feature-query-log-config=false
+            - --feature-stats-config=false
