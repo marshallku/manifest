@@ -6,10 +6,10 @@
 # rollups, only the monitors that are actually down, and per-node gauges.
 #
 # This belongs on pi01 for the same reason uptime-kuma does. Kuma's database is
-# read locally, so the display keeps reporting *which* things are down during a
-# prd01 outage — the one moment it is worth looking at. Prometheus lives in the
-# cluster and dies with prd01, so its absence degrades to `hosts.ok = false`
-# instead of failing the document.
+# read locally, so the display keeps reporting *which* things are down during an
+# app01 or cluster outage — the one moment it is worth looking at. Prometheus
+# lives in the cluster and dies with it, so its absence degrades to
+# `hosts.ok = false` instead of failing the document.
 #
 # `python:*-alpine` with the script bind-mounted, because aggregate.py uses only
 # the standard library — there is nothing to build and no image to publish. The

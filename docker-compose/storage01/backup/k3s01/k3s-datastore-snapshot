@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Produce a consistent copy of prd01's k3s datastore, as root.
+"""Produce a consistent copy of k3s01's k3s datastore, as root.
 
 Why this exists at all. The runner's ordinary `sqlite` engine pipes a short
 program to the source host's python3, which runs as the unprivileged runner

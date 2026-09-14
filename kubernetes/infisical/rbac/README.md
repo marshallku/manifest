@@ -78,7 +78,8 @@ kubectl -n infisical get secret backup-runner-token -o jsonpath='{.data.token}' 
 kubectl -n infisical get secret backup-runner-token -o jsonpath='{.data.ca\.crt}'  | base64 -d
 ```
 
-Build a kubeconfig from those two values pointing at `https://192.168.219.100:6443`,
+Build a kubeconfig from those two values pointing at `https://192.168.219.193:6443`
+(k3s01 — it was `.100`/prd01 until the 2026-09-09 move),
 place it at `/etc/backup/kubeconfig` (mode `0600`) on the host that runs
 `kubectl` for the runner, and point the job at it with `KUBECONFIG`. The runner
 never puts the credential in argv — the same invariant it keeps for database
@@ -95,7 +96,8 @@ with this kubeconfig on 2026-09-01: all eight checks matched, and `pg_dump
 
 ## Then remove the admin credential
 
-`marshall@prd01` currently holds `~/.kube/config` containing a **`system:masters`**
-client certificate (valid until 2027-02-07). While that file exists, anything
+`marshall@k3s01` currently holds `~/.kube/config` containing a **`system:masters`**
+client certificate (re-issued with the host on 2026-09-08, valid until
+2027-09-08). While that file exists, anything
 running as `marshall` can ignore this Role entirely, which makes the whole
 directory decorative. Delete it once the scoped kubeconfig above is in place.

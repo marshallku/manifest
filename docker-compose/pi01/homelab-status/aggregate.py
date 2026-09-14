@@ -9,11 +9,11 @@ only the monitors that are actually down, and a handful of host gauges.
 Two sources, deliberately unequal:
 
   - Uptime Kuma's SQLite database, read *locally* on pi01. This is the half
-    that has to keep working when prd01 and the whole k3s cluster are gone,
+    that has to keep working when app01 and the whole k3s cluster are gone,
     which is the only moment the display earns its place on the shelf.
-  - Prometheus, which lives in-cluster on prd01. It dies with prd01, so its
-    absence is reported (`hosts.ok = false`) rather than allowed to fail the
-    whole document.
+  - Prometheus, which lives in-cluster on k3s01. It dies with the cluster, so
+    its absence is reported (`hosts.ok = false`) rather than allowed to fail
+    the whole document.
 
 The database is opened read-only over its live WAL — no copy. A copy would be
 ~34 MB per refresh, and pi01 keeps its state on an SD card whose write volume
@@ -79,7 +79,7 @@ GROUP_LABELS = {
     "관측 스택": "OBSERV",
     "GitOps · 시크릿": "GITOPS",
     "공개 서비스": "PUBLIC",
-    "내부 오리진 (prd01)": "ORIGIN",
+    "내부 오리진 (app01)": "ORIGIN",
     "k8s 앱 (NodePort)": "K8S APPS",
     "데이터스토어": "DATA",
 }

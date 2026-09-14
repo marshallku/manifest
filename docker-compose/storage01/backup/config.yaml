@@ -53,9 +53,9 @@ sources:
     k3s01:
         ssh: marshall@192.168.219.193
         # The single-node cluster the 3-node one collapsed into on 2026-09-09.
-        # Same send-only `sudo rsync` grant as prd01, installed by the guest
-        # bootstrap rather than by hand, plus the datastore-snapshot helper the
-        # job below needs.
+        # Send-only `sudo rsync` grant, installed by the guest bootstrap
+        # rather than by hand, plus the datastore-snapshot helper the job below
+        # needs.
         privilege: sudo-rsync
 
     app01:
@@ -68,8 +68,8 @@ sources:
 
     edge01:
         ssh: marshall@192.168.219.192
-        # Same send-only `sudo rsync` grant as prd01 — /etc/nginx/ssl and
-        # /etc/edge are root-owned, and .acme.sh holds 0600 files.
+        # Same send-only `sudo rsync` grant — /etc/nginx/ssl and /etc/edge
+        # are root-owned, and .acme.sh holds 0600 files.
         privilege: sudo-rsync
 
     storage01:
@@ -143,8 +143,9 @@ jobs:
     # `/mnt/hdd/data/dongjoo.me/html` was NOT carried to app01: the 2026-09-06
     # audit found at least four independent backdoors in that document root and
     # the plan is a full rebuild, so copying it onto a clean host would have been
-    # the wrong move. It still exists on prd01 and in every ZFS snapshot taken
-    # before this date, which is where to look if the rebuild needs a reference.
+    # the wrong move. It survives only in the ZFS snapshots taken before this
+    # date — prd01 itself was powered off on 2026-09-09 — which is where to look
+    # if the rebuild needs a reference.
     # What moved: the MySQL datadir (dumped below) and the `dorp` theme.
     - name: dongjoo
       source: app01
@@ -184,12 +185,12 @@ jobs:
           - to: n8n/dump/database.sqlite
             engine: sqlite
             # No container and nothing installed on the source. The file is
-            # uid 1000 / mode 644 on the prd01 host, so the runner reads it
+            # uid 1000 / mode 644 on the app01 host, so the runner reads it
             # without privilege escalation, and the work is done by a short
             # Python program piped to the host's existing `python3` — the
             # `sqlite3` module is stdlib, so the source stays as dumb as an SSH
-            # endpoint. Verified on prd01: python3 3.13.5, sqlite 3.46.1, and
-            # `VACUUM INTO` through a read-only connection to a live WAL
+            # endpoint. Verified before the move: python3 3.13.5, sqlite
+            # 3.46.1, and `VACUUM INTO` through a read-only connection to a live WAL
             # database yields a copy that passes `PRAGMA integrity_check`.
             path: /mnt/hdd/data/n8n/database.sqlite
             # VACUUM INTO takes a read transaction and writes a consistent,
@@ -236,7 +237,7 @@ jobs:
     # ⚠️ Cold data, and only correct while it stays cold.
     #
     # /mnt/hdd/data/miniflux/db is a PostgreSQL datadir (see
-    # ../../miniflux/docker-compose.yml). The stack is NOT deployed on prd01 —
+    # ../../miniflux/docker-compose.yml). The stack is NOT deployed on app01 —
     # no container exists — so nothing is writing and an rsync of the datadir is
     # a consistent cold copy. That is the only reason this is a `paths` job and
     # not a `pg_dump` one.
@@ -303,7 +304,7 @@ jobs:
     # only thing keeping them secret is the sealed-secrets private key, which
     # exists solely inside this datastore — and the controller rotates that key
     # roughly monthly, so all six live keys matter, not just the newest. Losing
-    # prd01's disk without this job means every one of those secrets has to be
+    # k3s01's disk without this job means every one of those secrets has to be
     # recreated from its original source, the cluster CA is gone so no agent can
     # rejoin, and the join token is gone with it.
     - name: k3s-server
@@ -333,7 +334,7 @@ jobs:
             # -wal and -shm would be copied at three different instants and the
             # result can be torn, which is the live-datadir copy this file
             # rejects for miniflux. Instead a root script pinned in sudoers does
-            # the VACUUM INTO. See prd01/k3s-datastore-snapshot and the README.
+            # the VACUUM INTO. See k3s01/k3s-datastore-snapshot and the README.
             helper: /usr/local/sbin/k3s-datastore-snapshot
             # Must equal the path the helper writes; the runner refuses the run
             # if the helper reports a different one, so the two cannot drift

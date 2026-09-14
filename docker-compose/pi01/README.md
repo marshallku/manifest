@@ -2,15 +2,16 @@
 
 Debian 13 (trixie), **arm64**, 4 cores / 3.7 GiB RAM, 57 GB SD card.
 
-This host exists to hold the pieces that are only useful when `prd01` is *down*.
-`prd01` is simultaneously the k3s control-plane and the Docker host for every
-stack in the flat `docker-compose/` layout — including the AdGuard Home that
-serves DNS for the whole LAN. Losing it currently takes name resolution and any
-hope of an alert with it.
+This host exists to hold the pieces that are only useful when the rest of the
+homelab is *down*. `app01` is the Docker host for every stack in the flat
+`docker-compose/` layout — including the AdGuard Home that serves DNS for the
+whole LAN — and `k3s01` is a single-node cluster. Both are guests on `pve02`, so
+one hypervisor going away takes name resolution and any hope of an alert with
+it.
 
-So everything here is **outside the k3s cluster** and shares no dependency with
-it. Nothing on pi01 should ever need `prd01`, the cluster API, or the HDD to
-start.
+So everything here is **outside the k3s cluster and off `pve02`** — this is a
+physical Raspberry Pi — and shares no dependency with them. Nothing on pi01
+should ever need `app01`, the cluster API, or the HDD to start.
 
 | Stack | Port | Role |
 | --- | --- | --- |
@@ -41,11 +42,6 @@ SD write volume is bounded by configuration instead:
 - `homelab-status` writes nothing at all: it reads Kuma's database read-only,
   in place over the live WAL, and keeps its output in memory. Copying the
   database each refresh would have cost ~34 MB of writes every 30 s.
-
-> The `uptime-kuma` compose file pins `1.23.17`, but the running container is
-> **2.5.0**. Reconcile that before relying on the pinned tag; `homelab-status`
-> reads the database directly and works with either, but the status-page HTTP
-> API differs between the two majors.
 
 ## Setup
 
@@ -91,9 +87,10 @@ Two manual steps on the router; neither can be done from this repo.
 
 Be aware of what a secondary DNS entry does and does not buy you: resolvers pick
 between the two on their own schedule, and most do not fail over instantly.
-Expect a few seconds of failed lookups at the moment `prd01` dies, and expect a
-share of everyday queries to land here even while the primary is healthy. That
-second part is a feature — it is what proves the replica still works.
+Expect a few seconds of failed lookups at the moment the primary dies, and
+expect a share of everyday queries to land here even while the primary is
+healthy. That second part is a feature — it is what proves the replica still
+works.
 
 ## Uptime Kuma monitors
 

@@ -11,12 +11,12 @@ parser. Anything that would be awkward there is done here instead.
 ## Why this runs on pi01
 
 Same reasoning as `../uptime-kuma`. Kuma's SQLite database is read **locally**,
-so when `prd01` and the whole k3s cluster are gone the display still names the
+so when `app01` and the whole k3s cluster are gone the display still names the
 things that are down — which is the only moment it earns its shelf space. A
-copy of this stack on `prd01` would go dark in exactly that scenario.
+copy of this stack on `app01` would go dark in exactly that scenario.
 
 Prometheus does not get the same treatment: it lives in-cluster, so it dies
-with `prd01`. That is reported rather than hidden — `hosts.ok` goes `false`
+with `k3s01`. That is reported rather than hidden — `hosts.ok` goes `false`
 with an `error` string, the `kuma` half stays intact, and the device blanks the
 host panel instead of showing stale gauges.
 
@@ -41,7 +41,7 @@ host panel instead of showing stale gauges.
   "hosts": {
     "ok": true,
     "nodes": [
-      { "name": "prd01", "cpu": 5.9, "mem": 24.6, "disk": 58.4, "load": 0.7, "up_d": 17.5 }
+      { "name": "app01", "cpu": 5.9, "mem": 24.6, "disk": 58.4, "load": 0.7, "up_d": 17.5 }
     ]
   }
 }
@@ -103,7 +103,7 @@ short ASCII labels:
 | 관측 스택 | `OBSERV` |
 | GitOps · 시크릿 | `GITOPS` |
 | 공개 서비스 | `PUBLIC` |
-| 내부 오리진 (prd01) | `ORIGIN` |
+| 내부 오리진 (app01) | `ORIGIN` |
 | k8s 앱 (NodePort) | `K8S APPS` |
 | 데이터스토어 | `DATA` |
 
@@ -127,7 +127,7 @@ quietly serving the LAN — a log line nobody reads is not a safeguard.
 
 This is not ceremony. The document is a *subset of what Uptime Kuma keeps
 behind a login* — monitor names spell out internal hosts, ports and the service
-inventory (`Postgres (db01:5432)`, `MongoDB blog (prd01:27019)`, and so on).
+inventory (`Postgres (db01:5432)`, `MongoDB blog (app01:27019)`, and so on).
 Serving that openly on the LAN would make the summary weaker than the thing it
 summarises, which is a strange place to end up.
 

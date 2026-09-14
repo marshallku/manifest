@@ -59,19 +59,25 @@ data:
                   - loki:3100
 
           # Mac mini (M4 Pro) — native darwin node_exporter, not a cluster node.
-          # Scraped over LAN; keep DHCP reservation for 192.168.219.141.
+          # Scraped over LAN on its WIRED address (en0). `.141` was stale and the
+          # target sat `up == 0`; the machine answers on `.114`, which is also
+          # what edge01's nginx upstreams use. `.103` is its Wi-Fi and is
+          # deliberately not used — a target that only works when the wireless
+          # link is up is worse than one that is honestly down. Keep the DHCP
+          # reservation for 192.168.219.114.
           - job_name: mac-mini
             static_configs:
               - targets:
-                  - 192.168.219.141:9100
+                  - 192.168.219.114:9100
                 labels:
                   instance: mac-mini
                   node: mac-mini
 
           # pi01 (Raspberry Pi 4B) — runs the secondary AdGuard and the external
-          # uptime probe, deliberately outside the cluster so a prd01 outage does
-          # not take LAN DNS and alerting with it. Same LAN-scrape arrangement as
-          # the Mac mini; keep DHCP reservation for 192.168.219.127.
+          # uptime probe, deliberately outside the cluster (and off pve02) so a
+          # cluster outage does not take LAN DNS and alerting with it. Same
+          # LAN-scrape arrangement as the Mac mini; keep the DHCP reservation
+          # for 192.168.219.127.
           - job_name: pi01
             static_configs:
               - targets:

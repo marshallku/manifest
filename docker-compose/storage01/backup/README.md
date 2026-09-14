@@ -119,14 +119,14 @@ property would be lost.
 
 | Mode | Meaning | Used by |
 | --- | --- | --- |
-| `privilege: sudo-rsync` | `rsync --rsync-path="sudo rsync"` over SSH | prd01 |
+| `privilege: sudo-rsync` | `rsync --rsync-path="sudo rsync"` over SSH | k3s01, app01, edge01 |
 | `local: true` | runner's own host; no network hop | storage01 |
 | `kubectl: {}` | no filesystem at all — dumps via `kubectl exec` | k3s |
 
-### How prd01 is read without a password
+### How a source host is read without a password
 
-prd01's `sudo` requires a password in general. `/etc/sudoers` grants exactly one
-thing:
+`sudo` on a source host requires a password in general. `/etc/sudoers` there
+grants exactly one thing:
 
 ```
 marshall ALL=(root) NOPASSWD: /usr/bin/rsync --server --sender *
@@ -166,7 +166,7 @@ process root for no benefit.
 
 ```yaml
 - name: blog              # directory name under destination.root
-  source: prd01           # key from `sources`
+  source: app01           # key from `sources`
   paths:
       - from: /mnt/hdd/data/blog-backend
         to: blog/files    # relative to destination.root
@@ -221,7 +221,7 @@ precondition:
 ```
 
 This exists for exactly one situation so far. Miniflux's PostgreSQL datadir sits
-on prd01 but the stack is not deployed, so nothing writes to it and an `rsync` of
+on app01 but the stack is not deployed, so nothing writes to it and an `rsync` of
 the datadir is a valid *cold* copy. That reasoning is true only while it stays
 stopped — the day it is started again, the same job silently becomes the
 live-datadir copy this whole file exists to prevent.
@@ -254,8 +254,8 @@ a consistent read for SQLite — it runs on what the distribution already ships.
 
 | Host | Needs | Why |
 | --- | --- | --- |
-| prd01 | the `/etc/sudoers` rule above | read root-owned files without a password |
-| prd01 | storage01's public key in `~/.ssh/authorized_keys` | pull direction; the earlier migration only opened prd01 → storage01 |
+| k3s01, app01, edge01 | the `/etc/sudoers` rule above | read root-owned files without a password |
+| k3s01, app01, edge01 | storage01's public key in `~/.ssh/authorized_keys` | pull direction; the guest bootstrap installs it |
 | storage01 | `python3` + `pyyaml`, `rsync`, `attr` | the runner itself; all present |
 | pve02 | the `backupsnap` account described below | see "Retention" above |
 
@@ -295,7 +295,7 @@ last snapshot before that date was thirteen days old.
 ### The datastore helper for the `k3s-server` job
 
 The cluster's identity — the sealed-secrets private keys, the cluster CA, the
-join token — lives only in prd01's k3s datastore. `marshallku/manifest` is a
+join token — lives only in k3s01's datastore. `marshallku/manifest` is a
 **public** repository holding 8 SealedSecrets, so that private key is the only
 thing keeping them secret, and the controller rotates it about monthly, which
 means all six live keys matter rather than just the newest.
@@ -312,10 +312,10 @@ So the copy is made by a root script that sudoers pins by path. It takes no
 arguments and reads no input, which is the whole point: there is no argument to
 smuggle anything through, so the grant authorises one behaviour rather than a
 program. Widening sudoers to `python3` or `sqlite3` instead would be arbitrary
-root code execution — strictly worse than the send-only rsync grant prd01
+root code execution — strictly worse than the send-only rsync grant k3s01
 already carries.
 
-Install on prd01, as root:
+Install on k3s01, as root:
 
 ```sh
 # 1. the artifact directory. Root-only on purpose: the script refuses to run if
@@ -324,13 +324,13 @@ Install on prd01, as root:
 install -d -o root -g root -m 0700 /var/lib/k3s-datastore-backup
 
 # 2. the helper itself, atomically, from this repo
-install -o root -g root -m 0755 prd01/k3s-datastore-snapshot \
+install -o root -g root -m 0755 k3s01/k3s-datastore-snapshot \
         /usr/local/sbin/k3s-datastore-snapshot
 
 # 3. the grant — validate BEFORE placing it. A syntax error in a sudoers file
 #    can lock every sudo user out of the host.
-visudo -cf prd01/sudoers.d/backup-k3s-datastore \
-  && install -o root -g root -m 0440 prd01/sudoers.d/backup-k3s-datastore \
+visudo -cf k3s01/sudoers.d/backup-k3s-datastore \
+  && install -o root -g root -m 0440 k3s01/sudoers.d/backup-k3s-datastore \
              /etc/sudoers.d/backup-k3s-datastore
 ```
 
@@ -342,7 +342,7 @@ stat -c '%n %U:%G %a' /usr/local/sbin/k3s-datastore-snapshot /usr/local/sbin \
                       /var/lib/k3s-datastore-backup
 #   ... root:root 755   (and no group/other write anywhere in that list)
 sha256sum /usr/local/sbin/k3s-datastore-snapshot
-#   must equal the committed copy: sha256sum prd01/k3s-datastore-snapshot
+#   must equal the committed copy: sha256sum k3s01/k3s-datastore-snapshot
 sudo -n -u marshall true && sudo -n /usr/local/sbin/k3s-datastore-snapshot
 #   prints one JSON object; exits non-zero and writes nothing on any failure
 ```
@@ -384,7 +384,7 @@ Two root-only credential files are expected. They are `0600 root:root` and are
 
 | Path | Contents |
 | --- | --- |
-| `/etc/backup/kubeconfig` | built from the `backup-runner` token, server `https://192.168.219.100:6443` |
+| `/etc/backup/kubeconfig` | built from the `backup-runner` token, server `https://192.168.219.193:6443` |
 | `/etc/backup/heartbeat.curl` | one line: `url = "http://192.168.219.127:3001/api/push/<token>"` |
 
 ### The dead-man's switch
@@ -451,7 +451,7 @@ side:
 ```sh
 rsync -aHAX --numeric-ids --fake-super \
   /mnt/backup/hosts/.zfs/snapshot/<stamp>/blog/files/ \
-  marshall@192.168.219.100:/mnt/hdd/data/blog-backend/
+  marshall@192.168.219.194:/mnt/hdd/data/blog-backend/
 ```
 
 Databases are restored from their dumps, per the command recorded in the
@@ -459,29 +459,25 @@ manifest.
 
 ## What is deliberately not backed up
 
+Three entries used to live here and no longer do — edge01's TLS keys
+(`/etc/nginx/ssl`), the edge deploy key (`/etc/edge`) and the `acme.sh` state
+holding the Cloudflare API token. The argument for skipping them was that a
+robot reissues certificates anyway, and it does not survive `marshallku.com`:
+that zone is hosted at hosting.co.kr, has no `acme.sh` dnsapi, and is therefore
+HTTP-01 only, so reissuing it needs `:80` already forwarded to the host being
+rebuilt. The `edge01` job covers all three now — see `config.yaml`.
+
 - **Bulk data already on `tank`** — Nextcloud files, Immich originals, the
   Jellyfin library. Copying `tank` to `tank` buys nothing. What protects it is
   the `vault` replica and the offsite copy, both driven from pve02.
 - **Derived data** — Immich thumbnails and transcodes, Nextcloud previews.
   Regenerated from the originals; backing them up trades real space for time
   that is cheap to spend again.
-- **`/mnt/hdd/data/cloud` on prd01 (37 GB)** — a Nextcloud installation two
-  generations old. It is reclaimable space, not a backup target.
-- **`/mnt/hdd/data/nextcloud` on prd01 (21 GB)** — superseded by the migration to
-  storage01 on 2026-08-18. Kept only as a rollback path; delete it once the new
-  instance has been exercised.
-- **TLS certificates and private keys (`/etc/nginx/ssl` on prd01)** — `acme.sh`
-  reissues them. Renewal is automated and was verified working on 2026-09-01
-  (`crontab`, `29 11 * * *`; next renewals 2026-09-04 through 09-18). Backing up
-  a private key that a robot will replace in weeks buys a copy of a secret and
-  nothing else. Note the caveat this rests on: three of the five domains still
-  use HTTP-01, so reissuing them requires the router's `:80` forward to point at
-  the issuing host. If that stops being true, this entry stops being true.
-- **The edge repository deploy key (`/etc/edge/id_ed25519` on prd01)** —
-  regenerate it and re-add the public half to GitHub. Five minutes, and it
-  invalidates the old one, which a restored copy would not.
-- **The Cloudflare API token in `~/.acme.sh/account.conf`** — regenerate in the
-  Cloudflare dashboard. (The file was `0664` until 2026-09-01; it is `0600` now.)
+- **`/mnt/hdd/data/cloud` and `/mnt/hdd/data/nextcloud` (37 GB + 21 GB, on the
+  retired prd01)** — an old Nextcloud installation and the datadir superseded by
+  the migration to storage01 on 2026-08-18. Neither followed the stacks to
+  app01: prd01 was powered off on 2026-09-09, so these are gone rather than
+  unprotected.
 - **Encryption of this store** — deliberately absent *here* rather than
   everywhere: it belongs to the offsite layer, where `restic` encrypts by
   default. `tank` already holds Infisical's dump and every application

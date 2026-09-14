@@ -1,8 +1,9 @@
 # AdGuard Home — secondary/failover DNS for the LAN (host: pi01).
 #
-# The primary runs on prd01, which is also the k3s control-plane and the host of
-# every other docker-compose stack. This replica is kept out of the cluster and
-# off /mnt/hdd so that its only dependency is pi01 itself.
+# The primary runs on app01 (192.168.219.194), which is also the host of every
+# other docker-compose stack in the flat layout and a guest on pve02. This
+# replica is kept off that hypervisor, out of the cluster and off /mnt/hdd so
+# that its only dependency is pi01 itself.
 #
 # First-time setup: ./bootstrap.sh (see README.md).
 

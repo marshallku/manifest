@@ -24,10 +24,11 @@ Wants=network-online.target
 Type=oneshot
 
 # Owns /mnt/backup/hosts, is in the `docker` group for the local dumps, and
-# holds the ssh keys for prd01 and backupsnap@pve02. systemd derives HOME from
-# the user database, so `ssh` finds ~/.ssh/{id_ed25519,known_hosts} without an
-# agent — the runner passes BatchMode=yes, which forbids prompting but does not
-# by itself establish host trust, so known_hosts must be pre-populated.
+# holds the ssh keys for the source hosts and backupsnap@pve02. systemd derives
+# HOME from the user database, so `ssh` finds ~/.ssh/{id_ed25519,known_hosts}
+# without an agent — the runner passes BatchMode=yes, which forbids prompting
+# but does not by itself establish host trust, so known_hosts must be
+# pre-populated.
 User=marshall
 Group=marshall
 

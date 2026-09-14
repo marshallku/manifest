@@ -1,6 +1,6 @@
-# Stable NodePort for the prd01 host nginx to reach argocd-server.
+# Stable NodePort for the edge01 host nginx to reach argocd-server.
 # argocd-server runs with server.insecure=true, so this serves plain HTTP on 8080;
-# TLS terminates at the prd01 nginx (*.marshallku.dev wildcard), which restricts
+# TLS terminates at the edge01 nginx (*.marshallku.dev wildcard), which restricts
 # access to the tailnet (allow 100.64.0.0/10). Kept separate from the upstream
 # argocd-server ClusterIP Service so re-rendering ArgoCD does not clobber it.
 apiVersion: v1

@@ -215,9 +215,10 @@ Worth recording, because the assumption cost an hour. `cloud.marshallku.dev` is
   `http_status:404` rule; `cloudflared-sssup` carries only maji/irang hosts);
 - the controller-managed `homelab-factory` tunnel has one route, `api-playzy`.
 
-The real path is **wildcard A record -> port forward -> host nginx on prd01**,
-which does Host-based routing. The cutover was therefore one line in
-`/etc/nginx/sites-enabled/marshallku.com`:
+The real path is **wildcard A record -> port forward -> host nginx**, which does
+Host-based routing. That nginx ran on prd01 at the time of the migration and has
+since moved to `edge01` (192.168.219.192); the file and the routing are the same.
+The cutover was therefore one line in `/etc/nginx/sites-enabled/marshallku.com`:
 
 ```nginx
 server_name cloud.marshallku.dev;
@@ -236,9 +237,9 @@ concluding anything about the network.
    `.env` and restart — `config/redis.config.php` reads it through `getenv()` at
    runtime, so no `config.php` editing. Deliberately left out of the migration
    so the move changed location and nothing else.
-2. **Retire prd01's stack.** `docker-compose/nextcloud/` is now a stale,
-   divergent copy kept as a rollback path. Once this instance has been exercised
-   for a few days, delete it and free `/mnt/hdd/data/nextcloud`.
+2. **Delete `docker-compose/nextcloud/`.** It is a stale, divergent copy that
+   was kept as a rollback path onto prd01 — which was powered off on 2026-09-09.
+   The rollback is no longer possible, so the directory is dead weight.
 3. **`bon/files` is owned by uid 1000**, so `occ files:scan` reports one error
    for that user. This is inherited, not caused by the move — the same scan
    fails identically on prd01. Fixing it means chowning ~1,586 files, so it is
@@ -252,8 +253,9 @@ start, and the migration copied it there directly.
 
 Things this directory cannot configure, recorded so they are not rediscovered:
 
-- **DNS is `192.168.219.100` then `192.168.219.127`** — the same DNS1/DNS2 pair
-  documented for pi01. The router at `.1` does **not** answer DNS; pointing
+- **DNS is `192.168.219.194` then `192.168.219.127`** — the same DNS1/DNS2 pair
+  documented for pi01 (`.194` is app01, the AdGuard primary; it was `.100`/prd01
+  until 2026-09-09). The router at `.1` does **not** answer DNS; pointing
   cloud-init at it produces a VM with working routing and no name resolution,
   which looks like a broken network and is not.
 - The VM is `onboot=1` with `qemu-guest-agent` installed, so pve02 can shut it
