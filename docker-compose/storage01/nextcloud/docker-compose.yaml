@@ -1,7 +1,8 @@
 # Nextcloud — migrated off prd01 (host: storage01).
 #
 # This is the *same instance* that used to run from `docker-compose/nextcloud/`
-# on prd01, moved rather than rebuilt. It was the largest single body of data in
+# on prd01 (that directory was deleted on 2026-09-14; see git history), moved
+# rather than rebuilt. It was the largest single body of data in
 # the homelab sitting on one unmirrored disk (`/mnt/hdd`), which is precisely
 # the "only one copy of the data" problem at the top of the hardware roadmap.
 # Here it sits on `tank`, a two-drive ZFS mirror with checksums.

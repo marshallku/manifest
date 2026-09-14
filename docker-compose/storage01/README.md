@@ -237,13 +237,14 @@ concluding anything about the network.
    `.env` and restart — `config/redis.config.php` reads it through `getenv()` at
    runtime, so no `config.php` editing. Deliberately left out of the migration
    so the move changed location and nothing else.
-2. **Delete `docker-compose/nextcloud/`.** It is a stale, divergent copy that
-   was kept as a rollback path onto prd01 — which was powered off on 2026-09-09.
-   The rollback is no longer possible, so the directory is dead weight.
-3. **`bon/files` is owned by uid 1000**, so `occ files:scan` reports one error
+2. **`bon/files` is owned by uid 1000**, so `occ files:scan` reports one error
    for that user. This is inherited, not caused by the move — the same scan
    fails identically on prd01. Fixing it means chowning ~1,586 files, so it is
    left as a deliberate decision rather than a silent cleanup.
+
+`docker-compose/nextcloud/`, prd01's copy of this stack, was deleted on
+2026-09-14: it had been kept as a rollback path onto a host that is now powered
+off.
 
 The preview cache is *not* on this list: the nested mount in
 `docker-compose.yaml` places `appdata_ocglba52vmd1` on the NVMe from the first

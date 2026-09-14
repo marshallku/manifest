@@ -15,14 +15,13 @@ moving them would change the deploy paths already in use on `app01` (which kept
 stacks and their bind mounts did not have to change at once). New stacks go
 under a host directory.
 
-One flat directory is dead: `nextcloud/` **was migrated** to
-`storage01/nextcloud/` (2026-08-18), so that the largest body of data in the
-homelab no longer lives on a single unmirrored disk. `cloud.marshallku.dev` is
-served from storage01, and the flat `nextcloud/` stack was kept only as a
-rollback path onto `prd01` — which was powered off on 2026-09-09 and is not
-coming back. The rollback it existed for is no longer possible, so the directory
-is now pure dead weight and should be deleted. See `storage01/README.md` for
-what was done.
+One flat directory is gone: `nextcloud/` was migrated to `storage01/nextcloud/`
+(2026-08-18), so that the largest body of data in the homelab no longer lives on
+a single unmirrored disk. `cloud.marshallku.dev` is served from storage01, and
+the flat stack was kept afterwards only as a rollback path onto `prd01` — which
+was powered off on 2026-09-09. With the rollback no longer possible the
+directory was deleted (2026-09-14); it is in git history if it is ever wanted.
+See `storage01/README.md` for what the migration did.
 
 ## Why pi01 exists
 
