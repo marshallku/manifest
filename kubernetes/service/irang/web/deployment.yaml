@@ -20,7 +20,7 @@ spec:
       containers:
         - name: web
           # CI (deploy-irang-prd.yml) rewrites this tag to :<sha> on push to main.
-          image: ghcr.io/80rian/irang-web:prd-placeholder
+          image: ghcr.io/80rian/irang-web:947077586b4f1105d4458b776b31c64e7a0e3f89
           ports:
             - containerPort: 3000
           env:
