@@ -3,14 +3,6 @@ services:
         image: mongo:8.2.3
         restart: always
         container_name: blog-database
-        # 포트를 publish 하지 않는다. api 는 같은 `internal_network` 안에서
-        # `MONGO_HOST=blog-database` 로 붙고(아래), 백업 러너는 네트워크가 아니라
-        # `docker exec` 로 mongodump 를 돌린다(storage01/backup/config.yaml 의
-        # `engine: mongodump, container: blog-database`). 즉 LAN 에 열어둘 이유가
-        # 하나도 없었다 — 2026-09-27 실측에서 27019 로 들어오는 연결은 0건이었다.
-        #
-        # 호스트에서 직접 붙어야 할 때는 포트를 다시 열지 말고:
-        #     docker exec -it blog-database mongosh -u "$MONGO_INITDB_ROOT_USERNAME" -p
         networks:
             internal_network:
         environment:
