@@ -3,6 +3,9 @@ services:
         image: mongo:8.2.3
         restart: always
         container_name: blog-database
+        ports:
+            # LAN 주소로만. 0.0.0.0 이면 tailnet 에도 열린다.
+            - ${MONGO_BIND}:${MONGO_PORT}:27017
         networks:
             internal_network:
         environment:
