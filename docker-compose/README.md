@@ -9,6 +9,13 @@ daemon. Which host a stack belongs to is decided by directory layout:
 | `pi01/<app>/` | `pi01` (192.168.219.127) | Raspberry Pi 4B, **arm64** — images must be multi-arch. |
 | `storage01/<app>/` | `storage01` (192.168.219.191) | VM on `pve02`. Bulk storage on a ZFS mirror of **SMR** drives — read that host's README before adding anything that writes small and often. |
 
+`monitoring/` is the exception to "new stacks go under a host directory": it is
+an app01 stack, and for app01 the host directory *is* the flat root, so adding an
+`app01/` alongside it would create two places to look for the same host. It runs
+cAdvisor and node-exporter, scraped over the LAN by the in-cluster Prometheus —
+app01 is not a k3s node, so nothing in the cluster's monitoring stack reaches it
+on its own.
+
 The flat top-level directories predate the split and are left in place because
 moving them would change the deploy paths already in use on `app01` (which kept
 `prd01`'s `/mnt/hdd/data/<app>` layout verbatim through the move, so that the

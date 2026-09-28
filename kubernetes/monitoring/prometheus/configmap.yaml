@@ -61,6 +61,28 @@ data:
               - source_labels: [__meta_kubernetes_node_name]
                 target_label: instance
 
+          # app01 — the Docker host. Not a cluster node, so the kubelet job above
+          # does not see any of its containers and the node-exporter DaemonSet
+          # never lands on it; both exporters run as plain containers there
+          # (docker-compose/monitoring/) and are scraped over the LAN, the same
+          # arrangement as pi01 and the Mac mini. Keep the DHCP reservation for
+          # 192.168.219.194.
+          - job_name: app01
+            static_configs:
+              - targets:
+                  - 192.168.219.194:9100
+                labels:
+                  instance: app01
+                  node: app01
+
+          - job_name: app01-cadvisor
+            static_configs:
+              - targets:
+                  - 192.168.219.194:8080
+                labels:
+                  instance: app01
+                  node: app01
+
           - job_name: loki
             static_configs:
               - targets:

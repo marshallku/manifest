@@ -1,0 +1,71 @@
+# Container and host metrics for app01, scraped over the LAN by the in-cluster
+# Prometheus (kubernetes/monitoring/prometheus/configmap.yaml, jobs `app01` and
+# `app01-cadvisor`).
+#
+# app01 is not a k3s node, so nothing in the cluster's monitoring stack reached
+# it: the kubelet's cAdvisor only sees the cluster's own containers, and the
+# node-exporter DaemonSet only lands on cluster nodes. Every stack in the flat
+# layout was therefore invisible to Prometheus. Same arrangement as pi01 and the
+# Mac mini — plain containers here, static_configs targets there.
+#
+# Both publish on app01's LAN address rather than 0.0.0.0. cAdvisor's endpoint
+# enumerates every container on the host and is unauthenticated, so it has no
+# business being reachable from anywhere the LAN is not.
+
+services:
+    cadvisor:
+        image: gcr.io/cadvisor/cadvisor:v0.55.1
+        container_name: cadvisor
+        restart: unless-stopped
+        ports:
+            - 192.168.219.194:8080:8080
+        command:
+            # Report containers only. Without this cAdvisor also walks every
+            # systemd slice and mount cgroup on the host, which multiplies the
+            # series count for data no dashboard here asks for.
+            - --docker_only=true
+            # Compose writes its own labels onto every container
+            # (com.docker.compose.project, .service, .config-hash, …). Exporting
+            # them adds a label per container to every series and buys nothing —
+            # the dashboards key on `name`.
+            - --store_container_labels=false
+            - --housekeeping_interval=10s
+            # Prometheus here has a hard 8GB retention cap, so drop the
+            # collectors nothing queries. `percpu` alone is one series per core
+            # per container.
+            - --disable_metrics=percpu,sched,tcp,udp,advtcp,process,hugetlb,referenced_memory
+        volumes:
+            - /:/rootfs:ro
+            # Carries docker.sock — this is what gives cAdvisor the Docker
+            # handler, and with it the `name` and `image` labels. Without it
+            # cAdvisor falls back to raw cgroups and exports nothing but a
+            # cgroup path, which is exactly how the k3s-side dashboard came to
+            # be No Data on every panel.
+            - /var/run:/var/run:ro
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+            - /dev/disk/:/dev/disk:ro
+        devices:
+            # Needed for the OOM-event collector. The upstream README uses
+            # `privileged: true` for this; the device on its own is enough on
+            # Debian and hands over considerably less.
+            - /dev/kmsg
+
+    node-exporter:
+        image: prom/node-exporter:v1.10.2
+        container_name: node-exporter
+        restart: unless-stopped
+        network_mode: host
+        pid: host
+        command:
+            - --web.listen-address=192.168.219.194:9100
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            # `$$` escapes compose interpolation; node-exporter receives a single `$`.
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($$|/)
+            - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$$
+        volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/host/root:ro,rslave
