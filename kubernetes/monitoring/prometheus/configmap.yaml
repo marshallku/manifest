@@ -34,24 +34,32 @@ data:
                 target_label: __address__
                 replacement: $1:9100
 
-          - job_name: cadvisor
+          # Container metrics come from the kubelet's built-in cAdvisor, not from
+          # the standalone cAdvisor DaemonSet that used to sit here. That DaemonSet
+          # mounted /var/lib/docker and /var/run expecting a Docker socket; k3s01
+          # runs containerd, so cAdvisor fell back to its raw-cgroup handler and
+          # emitted only an `id` label (a cgroup path). Every panel keyed on `name`
+          # or `pod` was therefore No Data while the target still reported up == 1.
+          # The kubelet endpoint labels each series with namespace/pod/container,
+          # which is what the dashboards query.
+          - job_name: kubelet-cadvisor
+            scheme: https
+            metrics_path: /metrics/cadvisor
+            authorization:
+              credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+            tls_config:
+              ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              # k3s signs the kubelet serving cert with its own per-node CA, which
+              # the in-cluster CA bundle does not chain to. Verifying here would
+              # only ever fail.
+              insecure_skip_verify: true
             kubernetes_sd_configs:
-              - role: pod
-                namespaces:
-                  names:
-                    - mgmt01
+              - role: node
             relabel_configs:
-              - source_labels: [__meta_kubernetes_pod_label_app]
-                regex: cadvisor
-                action: keep
-              - source_labels: [__meta_kubernetes_pod_node_name]
+              - source_labels: [__meta_kubernetes_node_name]
                 target_label: node
-              - source_labels: [__meta_kubernetes_pod_node_name]
+              - source_labels: [__meta_kubernetes_node_name]
                 target_label: instance
-              - source_labels: [__meta_kubernetes_pod_ip]
-                regex: (.+)
-                target_label: __address__
-                replacement: $1:8080
 
           - job_name: loki
             static_configs:

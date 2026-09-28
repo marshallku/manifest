@@ -85,6 +85,9 @@ rules:
       resources:
           - nodes
           - nodes/proxy
+          # The kubelet authorizes a scrape of :10250/metrics/cadvisor against
+          # the `nodes/metrics` subresource, not `nodes/proxy`.
+          - nodes/metrics
           - services
           - endpoints
           - pods

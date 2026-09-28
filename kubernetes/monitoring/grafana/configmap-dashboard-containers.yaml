@@ -10,7 +10,9 @@ data:
         {
             "__inputs": [],
             "__requires": [],
-            "annotations": { "list": [] },
+            "annotations": {
+                "list": []
+            },
             "editable": true,
             "fiscalYearStartMonth": 0,
             "graphTooltip": 1,
@@ -18,10 +20,15 @@ data:
             "links": [],
             "panels": [
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -30,28 +37,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "percentunit"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 0
+                    },
                     "id": 1,
                     "title": "CPU Usage per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -60,28 +79,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "bytes"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 0
+                    },
                     "id": 2,
-                    "title": "Memory Usage per Container",
+                    "title": "Memory Working Set per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "container_memory_working_set_bytes{name=~\"$container\", instance=~\"$node\"}",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -90,28 +121,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "Bps"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 8
+                    },
                     "id": 3,
-                    "title": "Network Receive per Container",
+                    "title": "Network Receive per Pod",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "sum(rate(container_network_receive_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_network_receive_bytes_total{job=\"kubelet-cadvisor\", pod!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod)",
+                            "legendFormat": "{{namespace}}/{{pod}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -120,28 +163,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "Bps"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 8
+                    },
                     "id": 4,
-                    "title": "Network Transmit per Container",
+                    "title": "Network Transmit per Pod",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "sum(rate(container_network_transmit_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_network_transmit_bytes_total{job=\"kubelet-cadvisor\", pod!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod)",
+                            "legendFormat": "{{namespace}}/{{pod}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -150,28 +205,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "Bps"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 16
+                    },
                     "id": 5,
                     "title": "Disk Read per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "sum(rate(container_fs_reads_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_fs_reads_bytes_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -180,28 +247,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "Bps"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 16
+                    },
                     "id": 6,
                     "title": "Disk Write per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "sum(rate(container_fs_writes_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_fs_writes_bytes_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -210,28 +289,40 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "bytes"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 24
+                    },
                     "id": 7,
                     "title": "Memory RSS per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "container_memory_rss{name=~\"$container\", instance=~\"$node\"}",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(container_memory_rss{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "palette-classic" },
+                            "color": {
+                                "mode": "palette-classic"
+                            },
                             "custom": {
                                 "axisBorderShow": false,
                                 "drawStyle": "line",
@@ -240,33 +331,54 @@ data:
                                 "pointSize": 5,
                                 "showPoints": "never",
                                 "spanNulls": false,
-                                "stacking": { "mode": "none" }
+                                "stacking": {
+                                    "mode": "none"
+                                }
                             },
                             "unit": "bytes"
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 24
+                    },
                     "id": 8,
                     "title": "Memory Cache per Container",
                     "type": "timeseries",
                     "targets": [
                         {
-                            "expr": "container_memory_cache{name=~\"$container\", instance=~\"$node\"}",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(container_memory_cache{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "thresholds" },
+                            "color": {
+                                "mode": "thresholds"
+                            },
                             "thresholds": {
                                 "steps": [
-                                    { "color": "green", "value": null },
-                                    { "color": "yellow", "value": 50 },
-                                    { "color": "red", "value": 80 }
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "yellow",
+                                        "value": 50
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 80
+                                    }
                                 ]
                             },
                             "unit": "percent",
@@ -275,58 +387,93 @@ data:
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 32
+                    },
                     "id": 9,
                     "title": "Memory Usage % (of limit)",
                     "type": "bargauge",
                     "options": {
                         "displayMode": "gradient",
                         "orientation": "horizontal",
-                        "reduceOptions": { "calcs": ["lastNotNull"] }
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ]
+                        }
                     },
                     "targets": [
                         {
-                            "expr": "(container_memory_working_set_bytes{name=~\"$container\", instance=~\"$node\"} / container_spec_memory_limit_bytes{name=~\"$container\", instance=~\"$node\"}) * 100 > 0",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(container_memory_working_set_bytes{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod, container) / (sum(container_spec_memory_limit_bytes{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod, container) > 0) * 100",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
-                            "color": { "mode": "thresholds" },
+                            "color": {
+                                "mode": "thresholds"
+                            },
                             "thresholds": {
                                 "steps": [
-                                    { "color": "green", "value": null },
-                                    { "color": "yellow", "value": 50 },
-                                    { "color": "red", "value": 80 }
+                                    {
+                                        "color": "green",
+                                        "value": null
+                                    },
+                                    {
+                                        "color": "yellow",
+                                        "value": 0.5
+                                    },
+                                    {
+                                        "color": "red",
+                                        "value": 1
+                                    }
                                 ]
                             },
                             "unit": "percentunit",
                             "min": 0,
-                            "max": 1
+                            "max": null
                         },
                         "overrides": []
                     },
-                    "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
+                    "gridPos": {
+                        "h": 8,
+                        "w": 24,
+                        "x": 0,
+                        "y": 40
+                    },
                     "id": 10,
                     "title": "CPU Usage Overview",
                     "type": "bargauge",
                     "options": {
                         "displayMode": "gradient",
                         "orientation": "horizontal",
-                        "reduceOptions": { "calcs": ["lastNotNull"] }
+                        "reduceOptions": {
+                            "calcs": [
+                                "lastNotNull"
+                            ]
+                        }
                     },
                     "targets": [
                         {
-                            "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}"
+                            "expr": "sum(rate(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod, container)",
+                            "legendFormat": "{{namespace}}/{{pod}}/{{container}}"
                         }
                     ]
                 },
                 {
-                    "datasource": { "type": "prometheus", "uid": "" },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
                     "fieldConfig": {
                         "defaults": {
                             "custom": {
@@ -336,90 +483,150 @@ data:
                         },
                         "overrides": [
                             {
-                                "matcher": { "id": "byName", "options": "CPU" },
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "CPU"
+                                },
                                 "properties": [
-                                    { "id": "unit", "value": "percentunit" },
-                                    { "id": "custom.width", "value": 100 }
+                                    {
+                                        "id": "unit",
+                                        "value": "percentunit"
+                                    },
+                                    {
+                                        "id": "custom.width",
+                                        "value": 100
+                                    }
                                 ]
                             },
                             {
-                                "matcher": { "id": "byName", "options": "Memory" },
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Memory"
+                                },
                                 "properties": [
-                                    { "id": "unit", "value": "bytes" },
-                                    { "id": "custom.width", "value": 120 }
+                                    {
+                                        "id": "unit",
+                                        "value": "bytes"
+                                    },
+                                    {
+                                        "id": "custom.width",
+                                        "value": 120
+                                    }
                                 ]
                             },
                             {
-                                "matcher": { "id": "byName", "options": "Net RX" },
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Net RX"
+                                },
                                 "properties": [
-                                    { "id": "unit", "value": "Bps" },
-                                    { "id": "custom.width", "value": 100 }
+                                    {
+                                        "id": "unit",
+                                        "value": "Bps"
+                                    },
+                                    {
+                                        "id": "custom.width",
+                                        "value": 100
+                                    }
                                 ]
                             },
                             {
-                                "matcher": { "id": "byName", "options": "Net TX" },
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "Net TX"
+                                },
                                 "properties": [
-                                    { "id": "unit", "value": "Bps" },
-                                    { "id": "custom.width", "value": 100 }
+                                    {
+                                        "id": "unit",
+                                        "value": "Bps"
+                                    },
+                                    {
+                                        "id": "custom.width",
+                                        "value": 100
+                                    }
                                 ]
                             }
                         ]
                     },
-                    "gridPos": { "h": 10, "w": 24, "x": 0, "y": 48 },
+                    "gridPos": {
+                        "h": 12,
+                        "w": 24,
+                        "x": 0,
+                        "y": 48
+                    },
                     "id": 11,
-                    "title": "Container Overview Table",
+                    "title": "Pod Overview Table",
                     "type": "table",
                     "options": {
-                        "sortBy": [{ "displayName": "Memory", "desc": true }]
+                        "sortBy": [
+                            {
+                                "displayName": "Memory",
+                                "desc": true
+                            }
+                        ]
                     },
                     "targets": [
                         {
-                            "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}",
+                            "expr": "sum(label_join(sum(rate(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod), \"pod_key\", \"/\", \"namespace\", \"pod\")) by (pod_key)",
                             "instant": true,
+                            "format": "table",
                             "refId": "CPU"
                         },
                         {
-                            "expr": "container_memory_working_set_bytes{name=~\"$container\", instance=~\"$node\"}",
-                            "legendFormat": "{{name}}",
+                            "expr": "sum(label_join(sum(container_memory_working_set_bytes{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}) by (namespace, pod), \"pod_key\", \"/\", \"namespace\", \"pod\")) by (pod_key)",
                             "instant": true,
+                            "format": "table",
                             "refId": "Memory"
                         },
                         {
-                            "expr": "sum(rate(container_network_receive_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}",
+                            "expr": "sum(label_join(sum(rate(container_network_receive_bytes_total{job=\"kubelet-cadvisor\", pod!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod), \"pod_key\", \"/\", \"namespace\", \"pod\")) by (pod_key)",
                             "instant": true,
+                            "format": "table",
                             "refId": "Net RX"
                         },
                         {
-                            "expr": "sum(rate(container_network_transmit_bytes_total{name=~\"$container\", instance=~\"$node\"}[$__rate_interval])) by (name)",
-                            "legendFormat": "{{name}}",
+                            "expr": "sum(label_join(sum(rate(container_network_transmit_bytes_total{job=\"kubelet-cadvisor\", pod!=\"\", node=~\"$node\", namespace=~\"$namespace\", pod=~\"$pod\"}[$__rate_interval])) by (namespace, pod), \"pod_key\", \"/\", \"namespace\", \"pod\")) by (pod_key)",
                             "instant": true,
+                            "format": "table",
                             "refId": "Net TX"
                         }
                     ],
                     "transformations": [
                         {
-                            "id": "seriesToColumns",
-                            "options": { "byField": "name" }
+                            "id": "joinByField",
+                            "options": {
+                                "byField": "pod_key",
+                                "mode": "outer"
+                            }
                         },
                         {
                             "id": "organize",
                             "options": {
+                                "excludeByName": {
+                                    "Time": true,
+                                    "Time 1": true,
+                                    "Time 2": true,
+                                    "Time 3": true,
+                                    "Time 4": true
+                                },
                                 "renameByName": {
-                                    "name": "Container",
+                                    "pod_key": "Namespace / Pod",
                                     "Value #CPU": "CPU",
                                     "Value #Memory": "Memory",
                                     "Value #Net RX": "Net RX",
                                     "Value #Net TX": "Net TX"
-                                }
+                                },
+                                "indexByName": {}
                             }
                         }
                     ]
                 }
             ],
             "schemaVersion": 39,
-            "tags": ["docker", "containers"],
+            "tags": [
+                "kubernetes",
+                "containers"
+            ],
             "templating": {
                 "list": [
                     {
@@ -428,7 +635,7 @@ data:
                             "text": "All",
                             "value": "$__all"
                         },
-                        "definition": "label_values(container_last_seen{name!=\"\"}, instance)",
+                        "definition": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\"}, node)",
                         "hide": 0,
                         "includeAll": true,
                         "label": "Node",
@@ -436,7 +643,7 @@ data:
                         "name": "node",
                         "query": {
                             "qryType": 1,
-                            "query": "label_values(container_last_seen{name!=\"\"}, instance)"
+                            "query": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\"}, node)"
                         },
                         "refresh": 2,
                         "type": "query"
@@ -447,22 +654,44 @@ data:
                             "text": "All",
                             "value": "$__all"
                         },
-                        "definition": "label_values(container_last_seen{name!=\"\", instance=~\"$node\"}, name)",
+                        "definition": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\"}, namespace)",
                         "hide": 0,
                         "includeAll": true,
-                        "label": "Container",
+                        "label": "Namespace",
                         "multi": true,
-                        "name": "container",
+                        "name": "namespace",
                         "query": {
                             "qryType": 1,
-                            "query": "label_values(container_last_seen{name!=\"\", instance=~\"$node\"}, name)"
+                            "query": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\"}, namespace)"
+                        },
+                        "refresh": 2,
+                        "type": "query"
+                    },
+                    {
+                        "current": {
+                            "selected": false,
+                            "text": "All",
+                            "value": "$__all"
+                        },
+                        "definition": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\"}, pod)",
+                        "hide": 0,
+                        "includeAll": true,
+                        "label": "Pod",
+                        "multi": true,
+                        "name": "pod",
+                        "query": {
+                            "qryType": 1,
+                            "query": "label_values(container_cpu_usage_seconds_total{job=\"kubelet-cadvisor\", container!=\"\", node=~\"$node\", namespace=~\"$namespace\"}, pod)"
                         },
                         "refresh": 2,
                         "type": "query"
                     }
                 ]
             },
-            "time": { "from": "now-1h", "to": "now" },
+            "time": {
+                "from": "now-1h",
+                "to": "now"
+            },
             "title": "Container Monitoring",
             "uid": "container-monitoring",
             "version": 1
