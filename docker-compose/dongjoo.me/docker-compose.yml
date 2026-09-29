@@ -1,57 +1,96 @@
+# dongjoo.me — rebuilt 2026-09-29 after the 2026-08-19 compromise.
+#
+# The old document root is NOT reused. It carried at least four independent
+# backdoors (fake plugins, `wp-conffg.php`, webshells) and only the media under
+# `uploads/2024` and `uploads/2025` was salvaged, by extension allowlist, from
+# `pve02:tank/backup/hosts@backup-20260907T181740Z` (held under the tag
+# `dongjoo-rebuild-20260929` so retention cannot prune it).
+#
+# The database is a NEW instance on a NEW datadir (`db2`), not a new schema on
+# the old one: the previous compose gave the WordPress container the whole
+# `.env`, so a webshell could read `MYSQL_ROOT_PASSWORD` from /proc/self/environ
+# and every credential on the old instance has to be treated as disclosed. The
+# old datadir stays at `db/` as evidence, served by no service in this file.
+#
+# Hence the env split below — a service is handed only the secrets it uses.
 services:
-  db:
-    image: mysql:9.0.1
-    # Declared rather than left to Compose's project-derived naming, because
-    # the backup runner addresses this container by name
-    # (backup/config.yaml). The value is what Compose already generates, so
-    # naming it changes nothing at runtime and makes the reference a contract.
-    container_name: dongjoome-db-1
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    volumes:
-      - /mnt/hdd/data/dongjoo.me/db:/var/lib/mysql
+    mysql:
+        image: mysql:9.4
+        # The service is `mysql`, not `db`, so that Compose does not try to
+        # adopt the retired `dongjoome-db-1` container that still holds the
+        # compromised datadir.
+        container_name: dongjoome-mysql
+        # The container search domain is `marshallku.dev`, which has a public
+        # `*` record, so an AAAA lookup for a bare service name like `mysql`
+        # resolves to Cloudflare. IPv4 wins today only because Docker's resolver
+        # answers the A query first. `.` removes the search domain and with it
+        # the whole collision class.
+        dns_search: "."
+        restart: unless-stopped
+        env_file:
+            - .env.db
+        volumes:
+            - /mnt/hdd/data/dongjoo.me/db2:/var/lib/mysql
 
-  wordpress:
-    image: wordpress:6.9.0-php8.5-apache
-    depends_on:
-      - db
-    ports:
-      - "8088:80"
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      WORDPRESS_DB_HOST: db:3306
-      WORDPRESS_DB_USER: ${MYSQL_USER}
-      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
-      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
-      WORDPRESS_CONFIG_EXTRA: |
-        define('FORCE_SSL_ADMIN', true);
-        if (strpos($$_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false)
-          $$_SERVER['HTTPS']='on';
-    volumes:
-      - /mnt/hdd/data/dongjoo.me/html:/var/www/html
-      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
-      - /mnt/hdd/data/dorp:/var/www/html/wp-content/themes/dorp
+    wordpress:
+        image: wordpress:6.9.0-php8.5-apache
+        container_name: dongjoome-wordpress
+        # The container search domain is `marshallku.dev`, which has a public
+        # `*` record, so an AAAA lookup for a bare service name like `mysql`
+        # resolves to Cloudflare. IPv4 wins today only because Docker's resolver
+        # answers the A query first. `.` removes the search domain and with it
+        # the whole collision class.
+        dns_search: "."
+        depends_on:
+            - mysql
+        restart: unless-stopped
+        ports:
+            # This is the address `wordpress_dongjoo` in the edge repo points
+            # at. While the site was being rebuilt it was published on 8188
+            # instead, so the public upstream had no listener at all and
+            # dongjoo.me returned 502 from the origin whatever the rest of the
+            # stack was doing — an enforced gate rather than an incidental one.
+            # Moving the port back here was the cutover.
+            - "192.168.219.194:8088:80"
+        env_file:
+            # DB name/user/password only — no root password, no remark secrets.
+            - .env.wordpress
+        environment:
+            WORDPRESS_DB_HOST: mysql:3306
+            WORDPRESS_CONFIG_EXTRA: |
+                define('FORCE_SSL_ADMIN', true);
+                if (strpos($$_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '', 'https') !== false)
+                  $$_SERVER['HTTPS']='on';
+                /* The break-in was: xmlrpc brute force -> admin login ->
+                   wp-admin/update.php?action=upload-plugin -> webshell.
+                   These close the last hop; the edge blocks xmlrpc.php and
+                   denies PHP under uploads. Plugin updates are done by
+                   unpacking into wp-content/plugins, see README. */
+                define('DISALLOW_FILE_EDIT', true);
+                define('DISALLOW_FILE_MODS', true);
+        volumes:
+            - /mnt/hdd/data/dongjoo.me/html:/var/www/html
+            - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+            - /mnt/hdd/data/dorp:/var/www/html/wp-content/themes/dorp
 
-  remark:
-    image: umputun/remark42:v1.14.0
-    container_name: "remark42"
-    hostname: "remark42"
-    restart: unless-stopped
-    ports:
-      - "8089:8080"
-    env_file:
-      - .env
-    environment:
-      - REMARK_URL=https://dongjoo.me/comments
-      - STORE_BOLT_PATH=/srv/var/db
-      - BACKUP_PATH=/srv/var/backup
-    volumes:
-      - /mnt/hdd/data/dongjoo.me/remark:/srv/var
+    remark:
+        image: umputun/remark42:v1.14.0
+        container_name: remark42
+        # The container search domain is `marshallku.dev`, which has a public
+        # `*` record, so an AAAA lookup for a bare service name like `mysql`
+        # resolves to Cloudflare. IPv4 wins today only because Docker's resolver
+        # answers the A query first. `.` removes the search domain and with it
+        # the whole collision class.
+        dns_search: "."
+        hostname: remark42
+        restart: unless-stopped
+        ports:
+            - "192.168.219.194:8089:8080"
+        env_file:
+            - .env.remark
+        environment:
+            - REMARK_URL=https://dongjoo.me/comments
+            - STORE_BOLT_PATH=/srv/var/db
+            - BACKUP_PATH=/srv/var/backup
+        volumes:
+            - /mnt/hdd/data/dongjoo.me/remark:/srv/var

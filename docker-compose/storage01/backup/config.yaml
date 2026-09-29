@@ -139,27 +139,32 @@ jobs:
                 password_env: MONGO_INITDB_ROOT_PASSWORD
 
     # ------------------------------------------------------------ dongjoo.me
-    # ⚠️ This bundle got SMALLER on 2026-09-09 and that is deliberate.
-    # `/mnt/hdd/data/dongjoo.me/html` was NOT carried to app01: the 2026-09-06
-    # audit found at least four independent backdoors in that document root and
-    # the plan is a full rebuild, so copying it onto a clean host would have been
-    # the wrong move. It survives only in the ZFS snapshots taken before this
-    # date — prd01 itself was powered off on 2026-09-09 — which is where to look
-    # if the rebuild needs a reference.
-    # What moved: the MySQL datadir (dumped below) and the `dorp` theme.
+    # The bundle has a document root again. It lost one on 2026-09-09 because
+    # the old one carried at least four independent backdoors and was left
+    # behind on purpose; the site was rebuilt from scratch on 2026-09-29 and
+    # `html/` is now clean core plus the salvaged media, so it is worth having.
+    #
+    # Two datadirs are excluded rather than one:
+    #   `db/`  the RETIRED, compromised MySQL 9.0.1 datadir. Its container is
+    #          stopped. Kept on disk as evidence, deliberately not replicated.
+    #   `db2/` the live MySQL 9.4 datadir. rsync of a running datadir is not a
+    #          backup — the dump below is.
     - name: dongjoo
       source: app01
       paths:
           - from: /mnt/hdd/data/dongjoo.me
             to: dongjoo/files
             exclude:
-                - /db/ # MySQL datadir — see dump below
+                - /db/ # retired compromised datadir — evidence, not backup
+                - /db2/ # live MySQL datadir — see dump below
           - from: /mnt/hdd/data/dorp
             to: dongjoo/dorp
       dumps:
           - to: dongjoo/dump/dongduwp.sql.gz
             engine: mysqldump
-            container: dongjoome-db-1
+            # Renamed at the 2026-09-29 rebuild: the schema is the same but it
+            # lives on a new instance with a new datadir and new credentials.
+            container: dongjoome-mysql
             database: dongduwp
             # WordPress is entirely InnoDB, so this is a consistent snapshot of
             # a running server — no downtime, no table locks.
