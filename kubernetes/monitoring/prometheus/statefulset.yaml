@@ -30,7 +30,13 @@ spec:
                   args:
                       - --config.file=/etc/prometheus/prometheus.yml
                       - --storage.tsdb.path=/prometheus
-                      - --storage.tsdb.retention.time=90d
+                      # A month. 90d was the original figure, from before the
+                      # kubelet and app01 targets tripled the series count; the
+                      # size cap below would have started evicting long before
+                      # the time limit ever applied, which makes the retention
+                      # window whatever the disk happens to allow rather than a
+                      # number anyone chose.
+                      - --storage.tsdb.retention.time=30d
                       # 18GB on mgmt01 sat on a dedicated data disk; on k3s01 this PV is
                       # on the ROOT filesystem, where filling it takes the whole
                       # single-node cluster down rather than just monitoring.
