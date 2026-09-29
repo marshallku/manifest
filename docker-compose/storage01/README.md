@@ -231,6 +231,45 @@ so verifying the origin on port 80 proves nothing. Reproduce with SNI —
 `curl -k --resolve host:443:<origin> https://host/status.php` — before
 concluding anything about the network.
 
+### Split-horizon DNS points at edge01's tailnet address — 2026-09-29
+
+AdGuard rewrites `cloud.marshallku.dev` so LAN clients skip Cloudflare entirely
+(the free plan caps a proxied upload at 100 MB, which is the wrong ceiling for a
+file sync host). The answer used to be edge01's LAN address, `192.168.219.192`,
+and that is exactly why the host was unreachable over Tailscale: the name still
+resolved — tailnet DNS is these same AdGuard instances — but **no node advertises
+`192.168.219.0/24`**, so the address had no route. It looked like a DNS problem
+and was a routing one.
+
+The rewrite now answers **`100.95.75.21`**, edge01's Tailscale address, which
+every tailnet member can route and LAN members reach directly anyway (the
+handshake stays on the wire: `tailscale ping edge01` reports
+`via 192.168.219.192:41641`). nginx is unchanged — same Host header, same
+certificate, same `proxy_pass`.
+
+The cost of this shape, stated plainly: **a LAN device that is not on the tailnet
+can no longer reach `cloud.marshallku.dev`.** That is acceptable here because
+every client of this host is a tailnet member. A subnet router advertising the
+LAN would have avoided the trade entirely and fixed the other LAN-answering
+rewrites (`marshallku.com`, `api.marshallku.com`, `www.marshallku.com`) with it;
+it was not taken because `192.168.219.0/24` is the KT router default, so the
+route collides with whatever foreign LAN a client happens to sit behind.
+
+Change it on the **primary only** (app01) — pi01 and vpn01 are `adguardhome-sync`
+replicas and follow within 10 minutes, or immediately on
+`docker restart adguardhome-sync`:
+
+```sh
+# note PUT; POST answers "only method PUT is allowed" with a 405
+curl -u "$USER:$PASS" -X PUT http://192.168.219.194:8888/control/rewrite/update \
+  -H 'Content-Type: application/json' \
+  -d '{"target":{"domain":"cloud.marshallku.dev","answer":"192.168.219.192"},
+       "update":{"domain":"cloud.marshallku.dev","answer":"100.95.75.21"}}'
+```
+
+Editing `AdGuardHome.yaml` directly is the wrong move: the running instance
+rewrites that file from memory on shutdown, so the edit disappears on restart.
+
 ### Still open
 
 1. **Enable Redis.** The container runs but is unused. Add `REDIS_HOST=redis` to
