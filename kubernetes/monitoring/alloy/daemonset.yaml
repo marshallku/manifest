@@ -1,3 +1,40 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+    name: alloy
+    namespace: mgmt01
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: alloy
+rules:
+    - apiGroups: [""]
+      resources:
+          - nodes
+          - namespaces
+          - pods
+      verbs: ["get", "list", "watch"]
+    # loki.source.kubernetes tails through the API rather than off the node's
+    # disk, so it needs to read the log subresource itself.
+    - apiGroups: [""]
+      resources:
+          - pods/log
+      verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+    name: alloy
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: alloy
+subjects:
+    - kind: ServiceAccount
+      name: alloy
+      namespace: mgmt01
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -14,6 +51,7 @@ spec:
             labels:
                 app: alloy
         spec:
+            serviceAccountName: alloy
             tolerations:
                 - operator: Exists
             containers:
@@ -22,7 +60,21 @@ spec:
                   args:
                       - run
                       - /etc/alloy/config.alloy
-                      - --storage.path=/tmp/alloy
+                      # Read offsets live here. On the node rather than the
+                      # container filesystem: with an ephemeral path every
+                      # restart re-reads each pod's log from the beginning, and
+                      # Loki drops whatever is older than a week
+                      # (reject_old_samples_max_age) while the replay eats into
+                      # the per-stream rate limit that live logs need.
+                      - --storage.path=/var/lib/alloy
+                  env:
+                      # The config's field selector narrows pod discovery to this
+                      # node; without it every member of the DaemonSet would tail
+                      # every pod in the cluster.
+                      - name: NODE_NAME
+                        valueFrom:
+                            fieldRef:
+                                fieldPath: spec.nodeName
                   ports:
                       - name: http
                         containerPort: 12345
@@ -35,9 +87,8 @@ spec:
                   volumeMounts:
                       - name: config
                         mountPath: /etc/alloy
-                      - name: docker-sock
-                        mountPath: /var/run/docker.sock
-                        readOnly: true
+                      - name: storage
+                        mountPath: /var/lib/alloy
                       - name: journal
                         mountPath: /var/log/journal
                         readOnly: true
@@ -48,9 +99,10 @@ spec:
                 - name: config
                   configMap:
                       name: alloy-config
-                - name: docker-sock
+                - name: storage
                   hostPath:
-                      path: /var/run/docker.sock
+                      path: /var/lib/alloy
+                      type: DirectoryOrCreate
                 - name: journal
                   hostPath:
                       path: /var/log/journal

@@ -20,6 +20,19 @@ pi01은 `docker-compose/pi01/node-exporter/`, Mac mini는 네이티브 node_expo
 (namespace/pod/container 라벨), app01의 Docker 컨테이너는 `docker-monitoring`
 (`name` 라벨). 라벨 스키마가 달라서 한 장으로 합칠 수 없다.
 
+## 로그
+
+Alloy도 같은 이유로 둘이다. 클러스터 파드 로그는 in-cluster Alloy가 Kubernetes
+API로 tail 하고(`loki.source.kubernetes`, RBAC에 `pods/log` 필요), app01의 Docker
+컨테이너 로그는 `docker-compose/monitoring/config.alloy`가 docker.sock에서 읽어
+Loki NodePort(30100)로 밀어 넣는다. 양쪽 다 `host` 라벨을 붙이므로 LogQL 한
+셀렉터로 출처를 고를 수 있다: `{host="app01"}`, `{host="k3s01"}`.
+
+Alloy의 `--storage.path`는 **반드시 영속 경로**여야 한다. 컨테이너 파일시스템에
+두면 재시작마다 모든 로그를 처음부터 다시 읽고, Loki는 1주(`reject_old_samples_max_age`)
+넘은 것을 버리면서 그 사이 per-stream rate limit을 실시간 로그와 나눠 쓰게 된다.
+in-cluster는 hostPath `/var/lib/alloy`, app01은 named volume.
+
 ## 3. Loki
 
 kubectl apply -f kubernetes/monitoring/loki/

@@ -51,6 +51,24 @@ services:
             # Debian and hands over considerably less.
             - /dev/kmsg
 
+    # Container logs, shipped to the cluster's Loki. Its counterpart in the
+    # cluster reads the Kubernetes API and never sees this host's Docker daemon.
+    alloy:
+        image: grafana/alloy:v1.13.0
+        container_name: alloy
+        restart: unless-stopped
+        command:
+            - run
+            - /etc/alloy/config.alloy
+            # Read offsets live here. On a named volume rather than the
+            # container's filesystem, so a restart resumes where it left off
+            # instead of replaying every container's whole log into Loki.
+            - --storage.path=/var/lib/alloy
+        volumes:
+            - ./config.alloy:/etc/alloy/config.alloy:ro
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - alloy-data:/var/lib/alloy
+
     node-exporter:
         image: prom/node-exporter:v1.10.2
         container_name: node-exporter
@@ -69,3 +87,6 @@ services:
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
             - /:/host/root:ro,rslave
+
+volumes:
+    alloy-data:

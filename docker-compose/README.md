@@ -12,9 +12,10 @@ daemon. Which host a stack belongs to is decided by directory layout:
 `monitoring/` is the exception to "new stacks go under a host directory": it is
 an app01 stack, and for app01 the host directory *is* the flat root, so adding an
 `app01/` alongside it would create two places to look for the same host. It runs
-cAdvisor and node-exporter, scraped over the LAN by the in-cluster Prometheus —
-app01 is not a k3s node, so nothing in the cluster's monitoring stack reaches it
-on its own.
+cAdvisor and node-exporter, scraped over the LAN by the in-cluster Prometheus,
+plus an Alloy that ships this host's container logs to the cluster's Loki — app01
+is not a k3s node, so nothing in the cluster's monitoring stack reaches it on its
+own.
 
 The flat top-level directories predate the split and are left in place because
 moving them would change the deploy paths already in use on `app01` (which kept

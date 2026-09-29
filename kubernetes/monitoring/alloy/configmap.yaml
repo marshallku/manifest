@@ -7,47 +7,54 @@ metadata:
         app: alloy
 data:
     config.alloy: |
-        // Docker container log discovery
-        discovery.docker "containers" {
-          host = "unix:///var/run/docker.sock"
+        // Cluster pod logs, read through the Kubernetes API.
+        //
+        // This was `discovery.docker` against /var/run/docker.sock until
+        // 2026-09-29. k3s01 runs containerd, so that socket does not exist: the
+        // pipeline logged a connection failure once a minute and shipped nothing
+        // but the journal for as long as it had been deployed. Container logs on
+        // the Docker host live in a second Alloy, docker-compose/monitoring/.
+
+        discovery.kubernetes "pods" {
+          role = "pod"
+
+          // A DaemonSet member must only tail the pods on its own node, or every
+          // pod's log is ingested once per node the moment the cluster grows a
+          // second one.
+          selectors {
+            role  = "pod"
+            field = "spec.nodeName=" + sys.env("NODE_NAME")
+          }
         }
 
-        discovery.relabel "containers" {
-          targets = discovery.docker.containers.targets
+        discovery.relabel "pods" {
+          targets = discovery.kubernetes.pods.targets
 
           rule {
-            source_labels = ["__meta_docker_container_name"]
-            regex         = "/(.*)"
+            source_labels = ["__meta_kubernetes_namespace"]
+            target_label  = "namespace"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            target_label  = "pod"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
             target_label  = "container"
           }
 
+          // Names the source host the same way the app01 Alloy does, so one
+          // LogQL selector can pick either.
           rule {
-            source_labels = ["__meta_docker_container_image"]
-            target_label  = "image"
-          }
-
-          rule {
-            source_labels = ["__meta_docker_network_name"]
-            target_label  = "network"
+            source_labels = ["__meta_kubernetes_pod_node_name"]
+            target_label  = "host"
           }
         }
 
-        loki.source.docker "containers" {
-          host       = "unix:///var/run/docker.sock"
-          targets    = discovery.relabel.containers.output
-          forward_to = [loki.process.containers.receiver]
-        }
-
-        loki.process "containers" {
-          stage.docker {}
-
-          stage.labels {
-            values = {
-              container = "",
-              image     = "",
-            }
-          }
-
+        loki.source.kubernetes "pods" {
+          targets    = discovery.relabel.pods.output
           forward_to = [loki.write.default.receiver]
         }
 
@@ -56,7 +63,8 @@ data:
           path        = "/var/log/journal"
           forward_to  = [loki.process.journal.receiver]
           labels      = {
-            job = "systemd-journal",
+            job  = "systemd-journal",
+            host = sys.env("NODE_NAME"),
           }
         }
 

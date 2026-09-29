@@ -6,9 +6,19 @@ metadata:
     labels:
         app: loki
 spec:
+    # NodePort, because the Alloy on app01 pushes container logs in from outside
+    # the cluster and the ClusterIP is not routable there. Same arrangement as
+    # Prometheus (30090) and Grafana (30300).
+    #
+    # `auth_enabled: false` in the Loki config means this is an unauthenticated
+    # read/write endpoint for anything on the LAN. That is the same trust
+    # boundary the LAN scrape targets already sit behind, but it is the reason
+    # this port has no business being forwarded anywhere.
+    type: NodePort
     selector:
         app: loki
     ports:
         - name: http
           port: 3100
           targetPort: 3100
+          nodePort: 30100

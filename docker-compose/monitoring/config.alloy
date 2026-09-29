@@ -1,0 +1,53 @@
+// Container logs for app01's docker-compose stacks.
+//
+// Alloy also runs in the cluster (kubernetes/monitoring/alloy/), but that one
+// reads the Kubernetes API and cannot see this host's Docker daemon — which is
+// how these logs came to be missing in the first place: the in-cluster config
+// pointed discovery.docker at a /var/run/docker.sock that does not exist on a
+// containerd-only k3s node.
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  // No image label: Docker service discovery does not expose one. The config
+  // this replaced relabelled `__meta_docker_container_image`, which is not a
+  // label Docker SD emits — it silently produced nothing, and nobody noticed
+  // because the whole pipeline was failing to reach the socket anyway. The
+  // running image is on the cAdvisor series next door if it is wanted.
+
+  // Constants, so a LogQL selector can pick the host or the source the same way
+  // it can for the cluster's pods.
+  rule {
+    target_label = "host"
+    replacement  = "app01"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+// Loki is in the cluster, so this goes over the LAN to its NodePort rather than
+// the ClusterIP, which is not routable from here.
+loki.write "default" {
+  endpoint {
+    url = "http://192.168.219.193:30100/loki/api/v1/push"
+  }
+}
