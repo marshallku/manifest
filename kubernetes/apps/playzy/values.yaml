@@ -42,7 +42,7 @@ surfaces:
       - PLAYZY_ADMIN_TOKEN
 
   kagi:
-    image: ghcr.io/marshallku/kagi:932372d4d86f57bbbde1fef45fa66bb392fd5069
+    image: ghcr.io/marshallku/kagi:38cf040dbef4cc82137abcabf1983dab3db072d9
     port: 8921
     # No host → cluster-internal only. Auto-logs in from KAGI_EMAIL/KAGI_PASSWORD.
     args:

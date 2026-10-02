@@ -22,7 +22,7 @@ spec:
       # the api container and keeps it running. Mirrors irang-dev wiring.
       initContainers:
         - name: kagi-serve
-          image: ghcr.io/marshallku/kagi:932372d4d86f57bbbde1fef45fa66bb392fd5069
+          image: ghcr.io/marshallku/kagi:38cf040dbef4cc82137abcabf1983dab3db072d9
           restartPolicy: Always
           args:
             - "serve"
