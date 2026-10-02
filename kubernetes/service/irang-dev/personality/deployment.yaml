@@ -81,7 +81,7 @@ spec:
               value: 09fd3173-a654-4ba7-861b-7873940f8efb
             # Kagi proxy requires an explicit model every call.
             - name: KAGI_MODEL
-              value: claude-4-sonnet
+              value: claude-5-5-sonnet
             # SQLite interpretation cache → mounted volume (see volumeMounts).
             - name: CACHE_DB_PATH
               value: /app/data/cache.db

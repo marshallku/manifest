@@ -144,7 +144,7 @@ spec:
             - name: KAGI_BASE_URL
               value: http://127.0.0.1:8921
             - name: KAGI_MODEL
-              value: claude-4-sonnet
+              value: claude-5-5-sonnet
             - name: PROMPTS_DIR
               value: /docs/prompts
             # Card-news render — irang-api POSTs slides to irang-web's
