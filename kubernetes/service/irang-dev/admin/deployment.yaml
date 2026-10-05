@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: admin-web
-          image: ghcr.io/80rian/irang-admin-web:dabb58d231341bf51dd8315168b0a8b60266f3a3
+          image: ghcr.io/80rian/irang-admin-web:68f983fcfcdc7224a1760d836e84a2eda2eb8d8c
           ports:
             - containerPort: 3000
           env:
