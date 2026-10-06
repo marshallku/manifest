@@ -1,0 +1,37 @@
+# life-wiki — private personal encyclopedia (MediaWiki 1.43, SQLite).
+#
+# Public host, private content: MediaWiki itself refuses anonymous reads,
+# account creation is off, and uploads are only served through img_auth.php.
+# The PV, the secrets and the operational notes are in
+# ../../service/life-wiki/ — apply those before this syncs.
+app: life-wiki
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/life-wiki:8aea140a19d3d6326576a5357507006e60a4efdd
+    port: 80
+    host: wiki.marshallku.dev
+    # Served outside MediaWiki so the login wall does not answer the probe.
+    healthPath: /healthz.php
+    # One SQLite writer. Recreate covers rollouts; the image's flock on
+    # /data covers a manually deleted pod racing its replacement.
+    strategy: Recreate
+    # First boot installs, image changes back up and migrate — both before
+    # Apache listens. Give that 10 minutes before liveness may kill it.
+    startupProbe:
+      periodSeconds: 10
+      failureThreshold: 60
+    env:
+      - name: WIKI_SERVER
+        value: https://wiki.marshallku.dev
+    secretEnv:
+      - MW_SECRET_KEY
+      - MW_UPGRADE_KEY
+      - MW_ADMIN_PASSWORD
+    volumes:
+      - name: data
+        claimName: life-wiki-data
+        mountPath: /data
+    resources:
+      requests: { cpu: 50m, memory: 256Mi }
+      limits: { memory: 1Gi }

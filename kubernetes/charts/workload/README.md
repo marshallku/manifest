@@ -44,6 +44,33 @@ which is a DNS-only wildcard at the tailnet address — so this costs a server
 block and no DNS work. Setting `host` *and* `nodePort` publishes the service
 through the tunnel as well; that is almost never what a tier C surface wants.
 
+## Stateful surface: an existing PVC, Recreate, slow boot
+
+For an app that keeps state on disk (e.g. SQLite), mount a PVC you created
+yourself. The chart only *references* claims — it never renders a PVC — so an
+ArgoCD prune or a deleted `apps/<app>/` directory can never take the data with
+it. Put the PV/PVC under `kubernetes/service/<app>/` (hostPath under
+`/var/lib/k3s-data/<app>`, `Retain`) and apply it by hand, like the secrets.
+
+```yaml
+surfaces:
+  web:
+    image: ghcr.io/marshallku/life-wiki:<sha>
+    port: 80
+    strategy: Recreate          # never two pods on one SQLite file during a rollout
+    startupProbe:               # liveness waits until the first probe succeeds
+      periodSeconds: 10
+      failureThreshold: 60      # 10 min for install/migrations
+    volumes:
+      - name: data
+        claimName: life-wiki-data
+        mountPath: /data
+```
+
+`Recreate` only covers rollouts; a manually deleted pod is still replaced
+while the old one terminates, so the app itself must guard against two
+writers (life-wiki holds a `flock` on the volume).
+
 ## Full example (web + api + secret + db)
 
 ```yaml
@@ -76,6 +103,7 @@ database:
 - `namespace` defaults to `app`; the managed secret defaults to `<app>-secret`.
 - A surface **without** `host` stays cluster-internal (worker/api-private).
 - `secretEnv` keys are pulled from the managed secret via `secretKeyRef`.
+- `volumes` mount existing PVCs (`name`, `claimName`, `mountPath` all required); the chart never creates storage.
 - `database.tier: dedicated` is the reserved escape hatch (future CloudNativePG);
   `shared` (default) uses the db01 Postgres instance via the provisioning helper.
 

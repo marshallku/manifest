@@ -32,5 +32,8 @@ Fail fast on the two required values.
 {{- range $name, $surface := .Values.surfaces -}}
 {{- if not $surface.image -}}{{- fail (printf "surface %q: image is required" $name) -}}{{- end -}}
 {{- if not $surface.port -}}{{- fail (printf "surface %q: port is required" $name) -}}{{- end -}}
+{{- range $surface.volumes -}}
+{{- if not (and .name .claimName .mountPath) -}}{{- fail (printf "surface %q: every volume needs name, claimName and mountPath" $name) -}}{{- end -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}

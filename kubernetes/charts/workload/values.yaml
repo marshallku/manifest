@@ -47,6 +47,15 @@ surfaces: {}
   #     requests: { cpu: 50m, memory: 128Mi }
   #     limits:   { memory: 512Mi }
   #   ingressAnnotations: {}                          # optional per-surface Ingress annotations
+  #   strategy: Recreate                              # optional Deployment strategy type
+  #                                                   #   (Recreate for single-writer state, e.g. SQLite)
+  #   startupProbe:                                   # optional; holds off liveness during slow boots
+  #     periodSeconds: 10                             #   (same healthPath; defaults 10s x 30)
+  #     failureThreshold: 60
+  #   volumes:                                        # optional; mounts EXISTING PVCs only. The chart
+  #     - name: data                                  #   never creates a PVC, so ArgoCD prune can never
+  #       claimName: example-data                     #   delete app data. Create the PV/PVC under
+  #       mountPath: /data                            #   kubernetes/service/<app>/ and apply it by hand.
 
 # Default container resources when a surface does not override them.
 defaultResources:

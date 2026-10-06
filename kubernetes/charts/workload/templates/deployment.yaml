@@ -13,6 +13,10 @@ metadata:
     {{- include "workload.labels" (dict "root" $root "surface" $name) | nindent 4 }}
 spec:
   replicas: {{ $surface.replicas | default 1 }}
+  {{- with $surface.strategy }}
+  strategy:
+    type: {{ . }}
+  {{- end }}
   selector:
     matchLabels:
       app: {{ $root.Values.app }}-{{ $name }}
@@ -29,6 +33,14 @@ spec:
       {{- with $root.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $surface.volumes }}
+      volumes:
+        {{- range . }}
+        - name: {{ .name }}
+          persistentVolumeClaim:
+            claimName: {{ .claimName }}
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ $name }}
@@ -57,9 +69,24 @@ spec:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
+          {{- with $surface.volumes }}
+          volumeMounts:
+            {{- range . }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+          {{- end }}
           resources:
             {{- toYaml ($surface.resources | default $root.Values.defaultResources) | nindent 12 }}
           {{- $health := $surface.healthPath | default "/" }}
+          {{- with $surface.startupProbe }}
+          startupProbe:
+            httpGet:
+              path: {{ $health }}
+              port: {{ $surface.port }}
+            periodSeconds: {{ .periodSeconds | default 10 }}
+            failureThreshold: {{ .failureThreshold | default 30 }}
+          {{- end }}
           readinessProbe:
             httpGet:
               path: {{ $health }}
