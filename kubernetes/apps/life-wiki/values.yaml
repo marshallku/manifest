@@ -8,7 +8,7 @@ app: life-wiki
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/life-wiki:8aea140a19d3d6326576a5357507006e60a4efdd
+    image: ghcr.io/marshallku/life-wiki:1b954b5d69c8a7c6073a47e3bf7f50854aa2d028
     port: 80
     host: wiki.marshallku.dev
     # Served outside MediaWiki so the login wall does not answer the probe.
