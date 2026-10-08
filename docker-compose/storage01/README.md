@@ -244,7 +244,8 @@ and was a routing one.
 The rewrite now answers **`100.95.75.21`**, edge01's Tailscale address, which
 every tailnet member can route and LAN members reach directly anyway (the
 handshake stays on the wire: `tailscale ping edge01` reports
-`via 192.168.219.192:41641`). nginx is unchanged — same Host header, same
+`via 192.168.219.192:41644` — every node listens on its own port since the
+OPNsense static-port NAT change). nginx is unchanged — same Host header, same
 certificate, same `proxy_pass`.
 
 The cost of this shape, stated plainly: **a LAN device that is not on the tailnet
