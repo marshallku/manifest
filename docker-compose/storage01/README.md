@@ -1,4 +1,4 @@
-# storage01 — storage and media VM (192.168.219.191)
+# storage01 — storage and media VM (10.20.0.41)
 
 Debian 13 (trixie), amd64, 12 vCPU / 20 GiB RAM, 100 GB root on NVMe.
 A QEMU guest on **pve02** (`192.168.219.199`), not a physical machine.
@@ -150,7 +150,7 @@ docker run --rm -v /mnt/hdd/data/nextcloud/app:/src:ro -v /home/marshall/.ssh:/s
     rsync -aHAX --numeric-ids --delete \
       -e "ssh -i /ssh/id_rsa -o StrictHostKeyChecking=no" \
       --rsync-path="sudo rsync" \
-      --exclude=/data/ /src/ marshall@192.168.219.191:/var/lib/homelab/nextcloud/html/
+      --exclude=/data/ /src/ marshall@10.20.0.41:/var/lib/homelab/nextcloud/html/
   '
 ```
 
@@ -200,7 +200,7 @@ Then the one step no environment variable can do:
 # does NOT fix this — the entrypoint applies it at install time, and this is not
 # an install. Without this the LAN address returns 400 and there is no way in.
 docker exec -u www-data nextcloud_app \
-  php occ config:system:set trusted_domains 1 --value=192.168.219.191
+  php occ config:system:set trusted_domains 1 --value=10.20.0.41
 docker exec -u www-data nextcloud_app php occ files:scan --all
 ```
 
@@ -222,7 +222,7 @@ The cutover was therefore one line in `/etc/nginx/sites-enabled/marshallku.com`:
 
 ```nginx
 server_name cloud.marshallku.dev;
-proxy_pass http://192.168.219.191:8080;   # was :18011, prd01's port
+proxy_pass http://10.20.0.41:8080;   # was :18011, prd01's port
 ```
 
 Leaving the old port there produced a 502 that looked exactly like an inbound

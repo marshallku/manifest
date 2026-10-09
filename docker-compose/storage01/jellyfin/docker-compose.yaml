@@ -27,7 +27,7 @@ services:
             - TZ=Asia/Seoul
             # Without this Jellyfin advertises a container-internal address to
             # clients that discover it on the LAN.
-            - JELLYFIN_PublishedServerUrl=http://192.168.219.191:8096
+            - JELLYFIN_PublishedServerUrl=http://10.20.0.41:8096
         volumes:
             - /var/lib/homelab/jellyfin/config:/config
             - /var/lib/homelab/jellyfin/cache:/cache
