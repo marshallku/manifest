@@ -131,15 +131,34 @@ deployed Compose 5.5.1:
   So: **either omit `-p` and let directory discovery load this file, or pass
   `-f docker-compose.yml` explicitly.** Never `-p` alone.
 
-## Known outstanding
+## Cloudflare — resolved 2026-09-29, kept because the symptom is not obvious
 
-**Cloudflare 301-redirects every `dongjoo.me` path to the identical HTTPS URL
-without ever reaching the origin.** The origin is verified good — over the
-tailnet, `https://dongjoo.me/` returns 200 with the real certificate, all 14
-posts and pages render, `/comments/` reaches remark42. This is a zone-level
-setting (SSL/TLS mode, "Always Use HTTPS", or a Redirect Rule) and the
-DNS-scoped token on edge01 cannot read it, so **the site stays publicly
-unreachable until that is changed in the Cloudflare dashboard**.
+For a while after the origin was healthy, Cloudflare still **301-redirected
+every `dongjoo.me` path to the identical HTTPS URL without ever reaching the
+origin**, so the site stayed publicly unreachable while the origin returned 200
+over the tailnet.
+
+It was **SSL/TLS encryption mode set to `Off` while "Always Use HTTPS" was on**
+— the two fight: `Off` sends the request down to HTTP, `Always Use HTTPS` sends
+it straight back. No Page Rule or Redirect Rule is involved, which is what makes
+it hard to find: the natural place to look has nothing in it. Mode is now
+`Full (strict)`, which is correct here because edge01 holds a valid Let's
+Encrypt certificate for the domain.
+
+How to recognise it from outside, without a zone-reading API token:
+
+| observation | reading |
+|---|---|
+| `http://` → 301 → `https://` | the zone toggle is behaving; look elsewhere |
+| `https://` → 301 → **the same `https://`** | an already-HTTPS request is being redirected again |
+| other subdomains do it too | zone-level, not a per-host rule |
+| no probe hits in edge01's access log | Cloudflare short-circuits; the origin and the app are innocent |
+| other zones on the account are fine | the zone, not the account |
+
+Uptime Kuma caught this the day it started (`Maximum number of redirects
+exceeded`) and alerted. Detection was never the gap.
+
+## Known outstanding
 
 remark42's Google and Facebook OAuth client secrets were in the old `.env` and
 are carried forward unchanged — they were reachable by the webshell and should
