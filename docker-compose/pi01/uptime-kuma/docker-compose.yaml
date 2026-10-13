@@ -17,6 +17,37 @@ services:
         restart: unless-stopped
         ports:
             - "3001:3001"
+        # 🚨 Pinned because inheriting the host's resolvers lost a boot race and
+        # blinded this monitor for a month (2026-09-15 → 2026-10-13).
+        #
+        # Docker's embedded resolver (127.0.0.11) learns its upstreams from the
+        # host's /etc/resolv.conf when the container is created. On 2026-10-03
+        # dockerd and this container both came up at 21:05, and NetworkManager
+        # did not write the nameservers until 22:48 — so the container recorded
+        # `NO EXTERNAL NAMESERVERS DEFINED` and every lookup that was not a
+        # container name returned SERVFAIL. 13+ monitors reported
+        # `getaddrinfo ENOTFOUND` as a false DOWN, with notifications attached,
+        # for four weeks. Restarting the container does not help: the upstream
+        # list is captured at creation, so it has to be given explicitly.
+        #
+        # Order matters and is the same argument bak01's DNS uses: this host
+        # exists to keep answering when pve02 is gone, so its own replica comes
+        # first and app01's primary — a pve02 guest — comes second. The public
+        # resolver is last so that a monitor can still resolve a hostname when
+        # both AdGuards are down; without it, the outage that matters most
+        # would once again look like 60 simultaneous ENOTFOUND failures.
+        # What the fallback does and does not do: Docker moves to the next
+        # resolver on a transport failure, SERVFAIL or REFUSED, but NOT on
+        # NXDOMAIN. So a name AdGuard *blocks* stays blocked — filtering is not
+        # bypassed — while an AdGuard *outage* does fall through to 1.1.1.1 and
+        # returns public answers. The cost of that is narrow and accepted: a
+        # host whose split-horizon answer is a LAN or tailnet address can look
+        # healthy over its public route while the internal route is broken.
+        # Going blind instead is worse, and is the failure this block fixes.
+        dns:
+            - 192.168.219.127 # this host's own AdGuard replica (network_mode: host)
+            - 192.168.219.194 # app01, the primary — but a pve02 guest
+            - 1.1.1.1 # last resort, so losing DNS never blinds the monitor
         environment:
             - TZ=Asia/Seoul
         volumes:

@@ -108,6 +108,37 @@ watch things *from outside* the cluster:
 Add a notification channel first (Settings → Notifications) — without one the
 probes are just a dashboard nobody is looking at when it matters.
 
+## 🚨 Bridge containers here need `dns:` spelled out
+
+Docker's embedded resolver learns its upstreams from the host's
+`/etc/resolv.conf` **at container creation** and never re-reads them. On this
+host that is a race it loses: on 2026-10-03 dockerd and its containers came up
+at 21:05 and NetworkManager did not write the nameservers until 22:48, so the
+containers recorded `NO EXTERNAL NAMESERVERS DEFINED`.
+
+The cost was four weeks of blind monitoring (2026-09-15 → 2026-10-13): 13+ Kuma
+monitors reporting `getaddrinfo ENOTFOUND` as a false DOWN, notifications
+attached, while the services themselves were fine. Nothing distinguishes that
+from a real outage in the alert, and a month of false alarms is how a real one
+gets ignored.
+
+So: **any stack here that uses the default bridge and resolves a hostname must
+pin `dns:` explicitly.** `uptime-kuma` does. Today the others do not need it —
+`adguard-home` and `node-exporter` run `network_mode: host` (host resolver, no
+embedded DNS involved) and `homelab-status` addresses everything by IP — but
+that is a property of today's config, not a guarantee.
+
+To check whether a container is in the bad state:
+
+```sh
+# the comment block is what Docker recorded, not what the host has now
+sudo docker exec <container> cat /etc/resolv.conf
+# "NO EXTERNAL NAMESERVERS DEFINED" means every non-container lookup SERVFAILs
+```
+
+Restarting the container does **not** fix it; the list is captured at creation.
+Recreate it, and pin `dns:` so the next reboot cannot reintroduce it.
+
 ## Verifying failover
 
 Worth doing once, deliberately, rather than discovering it during a real outage:
