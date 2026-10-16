@@ -51,7 +51,7 @@ destination:
 
 sources:
     k3s01:
-        ssh: marshall@192.168.219.193
+        ssh: marshall@10.20.0.20
         # The single-node cluster the 3-node one collapsed into on 2026-09-09.
         # Send-only `sudo rsync` grant, installed by the guest bootstrap
         # rather than by hand, plus the datastore-snapshot helper the job below
