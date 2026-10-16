@@ -46,7 +46,7 @@ destination:
         # snapshot NAME and pins the dataset itself, backed by
         # `zfs allow -u backupsnap snapshot tank/backup/hosts` — the delegation
         # grants creation and nothing else.
-        host: backupsnap@192.168.219.199
+        host: backupsnap@10.10.0.20
         dataset: tank/backup/hosts
 
 sources:
