@@ -107,11 +107,12 @@ data:
           # uptime probe, deliberately outside the cluster (and off pve02) so a
           # cluster outage does not take LAN DNS and alerting with it. Same
           # LAN-scrape arrangement as the Mac mini; keep the DHCP reservation
-          # for 192.168.219.127.
+          # for 10.10.0.30 (dev, since 2026-10-17; .127 stays as a static
+          # secondary only for the ESP32 shelf display until it is reflashed).
           - job_name: pi01
             static_configs:
               - targets:
-                  - 192.168.219.127:9100
+                  - 10.10.0.30:9100
                 labels:
                   instance: pi01
                   node: pi01

@@ -45,7 +45,7 @@ services:
         # healthy over its public route while the internal route is broken.
         # Going blind instead is worse, and is the failure this block fixes.
         dns:
-            - 192.168.219.127 # this host's own AdGuard replica (network_mode: host)
+            - 10.10.0.30 # this host's own AdGuard replica (network_mode: host)
             - 10.20.0.21 # app01, the primary — but a pve02 guest
             - 1.1.1.1 # last resort, so losing DNS never blinds the monitor
         environment:
