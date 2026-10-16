@@ -59,7 +59,7 @@ sources:
         privilege: sudo-rsync
 
     app01:
-        ssh: marshall@192.168.219.194
+        ssh: marshall@10.20.0.21
         # The compose host prd01 emptied into on 2026-09-09. Same send-only
         # `sudo rsync` grant, installed by the guest bootstrap. `marshall` is in
         # the docker group there, so the dump engines can `docker exec` without

@@ -51,7 +51,7 @@ services:
             # dongjoo.me returned 502 from the origin whatever the rest of the
             # stack was doing — an enforced gate rather than an incidental one.
             # Moving the port back here was the cutover.
-            - "192.168.219.194:8088:80"
+            - "10.20.0.21:8088:80"
         env_file:
             # DB name/user/password only — no root password, no remark secrets.
             - .env.wordpress
@@ -85,7 +85,7 @@ services:
         hostname: remark42
         restart: unless-stopped
         ports:
-            - "192.168.219.194:8089:8080"
+            - "10.20.0.21:8089:8080"
         env_file:
             - .env.remark
         environment:

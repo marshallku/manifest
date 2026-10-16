@@ -46,7 +46,7 @@ services:
         # Going blind instead is worse, and is the failure this block fixes.
         dns:
             - 192.168.219.127 # this host's own AdGuard replica (network_mode: host)
-            - 192.168.219.194 # app01, the primary — but a pve02 guest
+            - 10.20.0.21 # app01, the primary — but a pve02 guest
             - 1.1.1.1 # last resort, so losing DNS never blinds the monitor
         environment:
             - TZ=Asia/Seoul

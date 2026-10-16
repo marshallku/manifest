@@ -18,7 +18,7 @@ services:
         container_name: cadvisor
         restart: unless-stopped
         ports:
-            - 192.168.219.194:8080:8080
+            - 10.20.0.21:8080:8080
         command:
             # Report containers only. Without this cAdvisor also walks every
             # systemd slice and mount cgroup on the host, which multiplies the
@@ -76,7 +76,7 @@ services:
         network_mode: host
         pid: host
         command:
-            - --web.listen-address=192.168.219.194:9100
+            - --web.listen-address=10.20.0.21:9100
             - --path.procfs=/host/proc
             - --path.sysfs=/host/sys
             - --path.rootfs=/host/root
