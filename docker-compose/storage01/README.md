@@ -217,7 +217,7 @@ Worth recording, because the assumption cost an hour. `cloud.marshallku.dev` is
 
 The real path is **wildcard A record -> port forward -> host nginx**, which does
 Host-based routing. That nginx ran on prd01 at the time of the migration and has
-since moved to `edge01` (192.168.219.192); the file and the routing are the same.
+since moved to `edge01` (10.20.0.10 since 2026-10-17, 192.168.219.192 before); the file and the routing are the same.
 The cutover was therefore one line in `/etc/nginx/sites-enabled/marshallku.com`:
 
 ```nginx
