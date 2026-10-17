@@ -30,7 +30,7 @@ set -euo pipefail
 # `set -x` would trace them. Refuse rather than leak.
 case $- in *x*) echo "provision-db: refusing to run under 'set -x' (would leak passwords)" >&2; exit 1 ;; esac
 
-DB_HOST="${DB_HOST:-192.168.219.130}"
+DB_HOST="${DB_HOST:-10.20.0.40}"
 DB_PORT="${DB_PORT:-5432}"
 PSQL_BIN="${PSQL_BIN:-psql}"
 command -v "$PSQL_BIN" >/dev/null 2>&1 || PSQL_BIN=/opt/homebrew/opt/libpq/bin/psql

@@ -26,7 +26,7 @@ data:
             uid: influxdb-home
             type: influxdb
             access: proxy
-            url: http://192.168.219.130:8086
+            url: http://10.20.0.40:8086
             jsonData:
               version: Flux
               organization: marshall

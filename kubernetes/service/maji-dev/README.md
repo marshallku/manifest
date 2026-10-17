@@ -59,7 +59,7 @@ docker compose up -d
 Save the password — it goes into the Infisical `DATABASE_URL` next. Connection string for the cluster (use db01's LAN IP, not the `.local` hostname — cluster DNS doesn't resolve mDNS):
 
 ```
-postgres://maji:<password>@192.168.219.130:5443/maji-dev?sslmode=disable
+postgres://maji:<password>@10.20.0.40:5443/maji-dev?sslmode=disable
 ```
 
 ### 3. Set up the Infisical project

@@ -40,7 +40,7 @@ Create `irang-dev` bucket (separate from `irang-prod`) + custom domain `c1-dev.i
 DATABASE_URL for Infisical:
 
 ```
-postgres://maji:<password>@192.168.219.130:5443/sssup_dev?sslmode=disable
+postgres://maji:<password>@10.20.0.40:5443/sssup_dev?sslmode=disable
 ```
 
 (same password as the existing maji-dev DATABASE_URL — only the database name changed from `maji_dev`)

@@ -84,7 +84,7 @@ sources:
     # No `privilege`: this source only runs dumps. Pulling paths would need sudo
     # rsync on db01, and nothing here needs its filesystem.
     db01:
-        ssh: marshall@192.168.219.130
+        ssh: marshall@10.20.0.40
 
 # Stateful stacks defined in this repo but deliberately NOT backed up, recorded
 # so that "absent" is distinguishable from "forgotten":
