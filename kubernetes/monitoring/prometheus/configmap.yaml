@@ -89,16 +89,14 @@ data:
                   - loki:3100
 
           # Mac mini (M4 Pro) — native darwin node_exporter, not a cluster node.
-          # Scraped over LAN on its WIRED address (en0). `.141` was stale and the
-          # target sat `up == 0`; the machine answers on `.114`, which is also
-          # what edge01's nginx upstreams use. `.103` is its Wi-Fi and is
-          # deliberately not used — a target that only works when the wireless
-          # link is up is worse than one that is honestly down. Keep the DHCP
-          # reservation for 192.168.219.114.
+          # Scraped over LAN on its WIRED address (en0), dev 10.10.0.50 since
+          # 2026-10-17 (DHCP reservation). Its Wi-Fi is deliberately not used —
+          # a target that only works when the wireless link is up is worse than
+          # one that is honestly down.
           - job_name: mac-mini
             static_configs:
               - targets:
-                  - 192.168.219.114:9100
+                  - 10.10.0.50:9100
                 labels:
                   instance: mac-mini
                   node: mac-mini
