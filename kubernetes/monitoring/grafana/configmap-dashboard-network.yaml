@@ -44,7 +44,7 @@ data:
                 {
                     "id": 1,
                     "type": "row",
-                    "title": "회선 품질 — k3s01 → OPNsense → WAN 공유 경로, IPv4 ICMP",
+                    "title": "회선 품질",
                     "collapsed": false,
                     "gridPos": {
                         "h": 1,
@@ -106,8 +106,7 @@ data:
                             "expr": "clamp(1 - sum by (host) (increase(smokeping_response_duration_seconds_count[$__rate_interval])) / (sum by (host) (increase(smokeping_requests_total[$__rate_interval])) > 0), 0, 1)",
                             "legendFormat": "{{host}}"
                         }
-                    ],
-                    "description": "1 - 응답/요청. 요청 0 인 구간은 비운다 — 빈 칸은 데이터 없음이지 0% 가 아니다."
+                    ]
                 },
                 {
                     "id": 3,
@@ -164,7 +163,7 @@ data:
                 {
                     "id": 4,
                     "type": "timeseries",
-                    "title": "RTT p99 (지터·순간 지연)",
+                    "title": "RTT p99",
                     "gridPos": {
                         "h": 7,
                         "w": 12,
@@ -216,7 +215,7 @@ data:
                 {
                     "id": 5,
                     "type": "timeseries",
-                    "title": "WAN 처리량 (nic1, 회선 1 Gbps)",
+                    "title": "WAN 처리량",
                     "gridPos": {
                         "h": 7,
                         "w": 12,
@@ -284,13 +283,12 @@ data:
                             "expr": "rate(node_network_transmit_bytes_total{instance=\"pve02\",device=\"nic1\"}[$__rate_interval]) * 8",
                             "legendFormat": "업로드"
                         }
-                    ],
-                    "description": "pve02 의 WAN 물리 포트. 업로드는 아래로 그린다."
+                    ]
                 },
                 {
                     "id": 6,
                     "type": "row",
-                    "title": "OPNsense 세그먼트 · VM 트래픽 (pve02 tap 카운터)",
+                    "title": "세그먼트 · VM",
                     "collapsed": false,
                     "gridPos": {
                         "h": 1,
@@ -372,7 +370,6 @@ data:
                             "legendFormat": "{{device}} ↑"
                         }
                     ],
-                    "description": "↓ = OPNsense 가 그 세그먼트로 보낸 것(대개 인터넷에서 내려온 것), ↑ = 세그먼트에서 OPNsense 로 들어온 것. tap 은 호스트 쪽에서 세므로 VM 기준과 방향이 뒤집혀 있다 — 쿼리가 이미 보정했다.",
                     "transformations": [
                         {
                             "id": "renameByRegex",
@@ -414,7 +411,7 @@ data:
                 {
                     "id": 8,
                     "type": "timeseries",
-                    "title": "VM·LXC 별 처리량",
+                    "title": "VM별 처리량",
                     "gridPos": {
                         "h": 8,
                         "w": 12,
@@ -483,7 +480,6 @@ data:
                             "legendFormat": "{{device}} ↑"
                         }
                     ],
-                    "description": "↓ = 게스트가 받은 것, ↑ = 게스트가 보낸 것.",
                     "transformations": [
                         {
                             "id": "renameByRegex",
@@ -539,7 +535,7 @@ data:
                 {
                     "id": 9,
                     "type": "timeseries",
-                    "title": "WAN·세그먼트 오류·드롭",
+                    "title": "오류·드롭",
                     "gridPos": {
                         "h": 6,
                         "w": 12,
@@ -586,7 +582,6 @@ data:
                             "legendFormat": "{{device}}"
                         }
                     ],
-                    "description": "0 이면 안 그린다. 선이 보이면 그 자체가 신호.",
                     "transformations": [
                         {
                             "id": "renameByRegex",
@@ -635,7 +630,7 @@ data:
                 {
                     "id": 10,
                     "type": "timeseries",
-                    "title": "호스트 NIC (클러스터 밖·안)",
+                    "title": "호스트 NIC",
                     "gridPos": {
                         "h": 6,
                         "w": 12,
@@ -708,7 +703,7 @@ data:
                 {
                     "id": 11,
                     "type": "row",
-                    "title": "switch01 (SG3210X-M2) 포트 — SNMP",
+                    "title": "스위치",
                     "collapsed": false,
                     "gridPos": {
                         "h": 1,
@@ -790,7 +785,6 @@ data:
                             "legendFormat": "{{ifName}} {{ifAlias}} ↑"
                         }
                     ],
-                    "description": "↓ = 스위치가 그 포트로 내보낸 것(그쪽 기기가 받은 것). 링크가 올라온 포트만. 포트 2 너머(하위 스위치 → arch·mac-mini·Apple TV)는 기기별로 안 보인다.",
                     "transformations": [
                         {
                             "id": "renameByRegex",
@@ -860,7 +854,6 @@ data:
                             "legendFormat": "{{ifName}} 폐기"
                         }
                     ],
-                    "description": "0 이면 안 그린다. 폐기(discard) = 버퍼가 넘쳐 버린 패킷 — 공유 구간 포화의 직접 증거.",
                     "transformations": [
                         {
                             "id": "renameByRegex",
