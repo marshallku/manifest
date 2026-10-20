@@ -1,0 +1,68 @@
+# switch01 (SG3210X-M2) per-port counters over SNMP, scraped by Prometheus
+# (job `switch01`, kubernetes/monitoring/prometheus/configmap.yaml).
+#
+# The image's bundled snmp.yml already carries the if_mib module; the only
+# local part is the auth, which comes from a sealed second config file
+# (snmp_exporter merges every --config.file). SNMPv2c sends that community in
+# cleartext — it only ever travels k3s01 → OPNsense → the switch's VLAN 1, and
+# the community is read-only. The switch has no per-community source ACL.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: snmp-exporter
+    namespace: mgmt01
+    labels:
+        app: snmp-exporter
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: snmp-exporter
+    template:
+        metadata:
+            labels:
+                app: snmp-exporter
+        spec:
+            containers:
+                - name: snmp-exporter
+                  image: prom/snmp-exporter:v0.30.1
+                  args:
+                      - --config.file=/etc/snmp_exporter/snmp.yml
+                      - --config.file=/etc/snmp-auth/auth.yml
+                  ports:
+                      - name: http
+                        containerPort: 9116
+                  readinessProbe:
+                      httpGet:
+                          path: /
+                          port: 9116
+                      periodSeconds: 30
+                  resources:
+                      requests:
+                          cpu: 10m
+                          memory: 32Mi
+                      limits:
+                          memory: 128Mi
+                  volumeMounts:
+                      - name: auth
+                        mountPath: /etc/snmp-auth
+                        readOnly: true
+            volumes:
+                - name: auth
+                  secret:
+                      secretName: snmp-exporter-auth
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: snmp-exporter
+    namespace: mgmt01
+    labels:
+        app: snmp-exporter
+spec:
+    selector:
+        app: snmp-exporter
+    ports:
+        - name: http
+          port: 9116
+          targetPort: 9116

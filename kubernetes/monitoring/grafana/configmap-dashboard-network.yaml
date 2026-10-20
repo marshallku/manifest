@@ -1,0 +1,1052 @@
+# "Homelab Network" — line quality (smokeping), WAN and per-segment traffic
+# (pve02 tap counters), switch01 ports (SNMP). What each probe can and cannot
+# see is in the "읽는 법" panel and in kubernetes/monitoring/smokeping/.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: grafana-dashboard-network
+    namespace: mgmt01
+    labels:
+        app: grafana
+data:
+    network.json: |
+        {
+            "__inputs": [],
+            "__requires": [],
+            "annotations": {
+                "list": []
+            },
+            "editable": true,
+            "fiscalYearStartMonth": 0,
+            "graphTooltip": 1,
+            "id": null,
+            "links": [],
+            "refresh": "30s",
+            "schemaVersion": 39,
+            "tags": [
+                "network",
+                "smokeping",
+                "snmp",
+                "opnsense"
+            ],
+            "templating": {
+                "list": []
+            },
+            "time": {
+                "from": "now-6h",
+                "to": "now"
+            },
+            "timezone": "browser",
+            "title": "Homelab Network",
+            "uid": "homelab-network",
+            "version": 1,
+            "panels": [
+                {
+                    "id": 1,
+                    "type": "row",
+                    "title": "회선 품질 — k3s01 → OPNsense → WAN 공유 경로, IPv4 ICMP",
+                    "collapsed": false,
+                    "gridPos": {
+                        "h": 1,
+                        "w": 24,
+                        "x": 0,
+                        "y": 0
+                    },
+                    "panels": []
+                },
+                {
+                    "id": 2,
+                    "type": "text",
+                    "title": "읽는 법",
+                    "gridPos": {
+                        "h": 6,
+                        "w": 6,
+                        "x": 0,
+                        "y": 1
+                    },
+                    "options": {
+                        "mode": "markdown",
+                        "content": "smokeping_prober 가 1초마다 ping.\n\n- **10.10.0.1** 내부 기준선 — 이것도 나쁘면 OPNsense·pve02 문제\n- **182.228.141.1** ISP 첫 홉 — 여기서부터 나쁘면 회선\n- **www.youtube.com** 은 프론트 RTT 일 뿐 영상 전송 품질이 아니다\n\n기기 자신의 접속 링크(Wi-Fi·하위 스위치)는 안 보인다. 빈 칸 = 데이터 없음, 0% 와 다르다."
+                    }
+                },
+                {
+                    "id": 3,
+                    "type": "timeseries",
+                    "title": "손실률",
+                    "gridPos": {
+                        "h": 6,
+                        "w": 9,
+                        "x": 6,
+                        "y": 1
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "percentunit",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            },
+                            "min": 0,
+                            "max": 1,
+                            "interval": "1m"
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "clamp(1 - sum by (host) (increase(smokeping_response_duration_seconds_count[$__rate_interval])) / (sum by (host) (increase(smokeping_requests_total[$__rate_interval])) > 0), 0, 1)",
+                            "legendFormat": "{{host}}"
+                        }
+                    ],
+                    "description": "1 - 응답/요청. 요청 0 인 구간은 비운다."
+                },
+                {
+                    "id": 4,
+                    "type": "timeseries",
+                    "title": "RTT 중앙값",
+                    "gridPos": {
+                        "h": 6,
+                        "w": 9,
+                        "x": 15,
+                        "y": 1
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "s",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            },
+                            "interval": "1m"
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "histogram_quantile(0.5, sum by (host, le) (rate(smokeping_response_duration_seconds_bucket[$__rate_interval])))",
+                            "legendFormat": "{{host}}"
+                        }
+                    ]
+                },
+                {
+                    "id": 5,
+                    "type": "timeseries",
+                    "title": "RTT p99 (지터·순간 지연)",
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 0,
+                        "y": 7
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "s",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            },
+                            "interval": "1m"
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "histogram_quantile(0.99, sum by (host, le) (rate(smokeping_response_duration_seconds_bucket[$__rate_interval])))",
+                            "legendFormat": "{{host}}"
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "type": "timeseries",
+                    "title": "WAN 처리량 (nic1, 회선 1 Gbps)",
+                    "gridPos": {
+                        "h": 7,
+                        "w": 12,
+                        "x": 12,
+                        "y": 7
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "bps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byRegexp",
+                                    "options": "업로드"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.transform",
+                                        "value": "negative-Y"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_receive_bytes_total{instance=\"pve02\",device=\"nic1\"}[$__rate_interval]) * 8",
+                            "legendFormat": "다운로드"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_transmit_bytes_total{instance=\"pve02\",device=\"nic1\"}[$__rate_interval]) * 8",
+                            "legendFormat": "업로드"
+                        }
+                    ],
+                    "description": "pve02 의 WAN 물리 포트. 업로드는 아래로 그린다."
+                },
+                {
+                    "id": 7,
+                    "type": "row",
+                    "title": "OPNsense 세그먼트 · VM 트래픽 (pve02 tap 카운터)",
+                    "collapsed": false,
+                    "gridPos": {
+                        "h": 1,
+                        "w": 24,
+                        "x": 0,
+                        "y": 14
+                    },
+                    "panels": []
+                },
+                {
+                    "id": 8,
+                    "type": "timeseries",
+                    "title": "세그먼트별 처리량",
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 15
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "bps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byRegexp",
+                                    "options": ".* ↑"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.transform",
+                                        "value": "negative-Y"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_receive_bytes_total{instance=\"pve02\",device=~\"tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{device}} ↓"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_transmit_bytes_total{instance=\"pve02\",device=~\"tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{device}} ↑"
+                        }
+                    ],
+                    "description": "↓ = OPNsense 가 그 세그먼트로 보낸 것(대개 인터넷에서 내려온 것), ↑ = 세그먼트에서 OPNsense 로 들어온 것. tap 은 호스트 쪽에서 세므로 VM 기준과 방향이 뒤집혀 있다 — 쿼리가 이미 보정했다.",
+                    "transformations": [
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i0( .*)?$",
+                                "renamePattern": "LAN$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i2( .*)?$",
+                                "renamePattern": "SERVERS$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i3( .*)?$",
+                                "renamePattern": "LAB$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i4( .*)?$",
+                                "renamePattern": "IoT$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i5( .*)?$",
+                                "renamePattern": "GUEST$1"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": 9,
+                    "type": "timeseries",
+                    "title": "VM·LXC 별 처리량",
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 15
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "bps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byRegexp",
+                                    "options": ".* ↑"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.transform",
+                                        "value": "negative-Y"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_transmit_bytes_total{instance=\"pve02\",device=~\"tap100i0|veth101i0|tap102i0|tap103i0|tap104i0|tap300i0|tap400i0\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{device}} ↓"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_receive_bytes_total{instance=\"pve02\",device=~\"tap100i0|veth101i0|tap102i0|tap103i0|tap104i0|tap300i0|tap400i0\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{device}} ↑"
+                        }
+                    ],
+                    "description": "↓ = 게스트가 받은 것, ↑ = 게스트가 보낸 것.",
+                    "transformations": [
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap100i0( .*)?$",
+                                "renamePattern": "storage01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^veth101i0( .*)?$",
+                                "renamePattern": "edge01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap102i0( .*)?$",
+                                "renamePattern": "k3s01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap103i0( .*)?$",
+                                "renamePattern": "app01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap104i0( .*)?$",
+                                "renamePattern": "vpn01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap300i0( .*)?$",
+                                "renamePattern": "db01$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap400i0( .*)?$",
+                                "renamePattern": "home01$1"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": 10,
+                    "type": "timeseries",
+                    "title": "WAN·세그먼트 오류·드롭",
+                    "gridPos": {
+                        "h": 6,
+                        "w": 12,
+                        "x": 0,
+                        "y": 23
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "pps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "sum by (device) (rate(node_network_receive_errs_total{instance=\"pve02\",device=~\"nic1|tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval]) + rate(node_network_transmit_errs_total{instance=\"pve02\",device=~\"nic1|tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval]) + rate(node_network_receive_drop_total{instance=\"pve02\",device=~\"nic1|tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval]) + rate(node_network_transmit_drop_total{instance=\"pve02\",device=~\"nic1|tap200i0|tap200i2|tap200i3|tap200i4|tap200i5\"}[$__rate_interval])) > 0",
+                            "legendFormat": "{{device}}"
+                        }
+                    ],
+                    "description": "0 이면 안 그린다. 선이 보이면 그 자체가 신호.",
+                    "transformations": [
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i0( .*)?$",
+                                "renamePattern": "LAN$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i2( .*)?$",
+                                "renamePattern": "SERVERS$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i3( .*)?$",
+                                "renamePattern": "LAB$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i4( .*)?$",
+                                "renamePattern": "IoT$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^tap200i5( .*)?$",
+                                "renamePattern": "GUEST$1"
+                            }
+                        },
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^nic1( .*)?$",
+                                "renamePattern": "WAN$1"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": 11,
+                    "type": "timeseries",
+                    "title": "호스트 NIC (클러스터 밖·안)",
+                    "gridPos": {
+                        "h": 6,
+                        "w": 12,
+                        "x": 12,
+                        "y": 23
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "bps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byRegexp",
+                                    "options": ".* ↑"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.transform",
+                                        "value": "negative-Y"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_receive_bytes_total{node=~\"k3s01|app01|pi01|mac-mini\",device=~\"eth0|en0\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{node}} ↓"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(node_network_transmit_bytes_total{node=~\"k3s01|app01|pi01|mac-mini\",device=~\"eth0|en0\"}[$__rate_interval]) * 8",
+                            "legendFormat": "{{node}} ↑"
+                        }
+                    ]
+                },
+                {
+                    "id": 12,
+                    "type": "row",
+                    "title": "switch01 (SG3210X-M2) 포트 — SNMP",
+                    "collapsed": false,
+                    "gridPos": {
+                        "h": 1,
+                        "w": 24,
+                        "x": 0,
+                        "y": 29
+                    },
+                    "panels": []
+                },
+                {
+                    "id": 13,
+                    "type": "timeseries",
+                    "title": "포트별 처리량",
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 0,
+                        "y": 30
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "bps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byRegexp",
+                                    "options": ".* ↑"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "custom.transform",
+                                        "value": "negative-Y"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(ifHCOutOctets{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval]) * 8 and on (ifIndex) (ifOperStatus{instance=\"switch01\"} == 1)",
+                            "legendFormat": "{{ifName}} {{ifAlias}} ↓"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "rate(ifHCInOctets{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval]) * 8 and on (ifIndex) (ifOperStatus{instance=\"switch01\"} == 1)",
+                            "legendFormat": "{{ifName}} {{ifAlias}} ↑"
+                        }
+                    ],
+                    "description": "↓ = 스위치가 그 포트로 내보낸 것(그쪽 기기가 받은 것). 링크가 올라온 포트만. 포트 2 너머(하위 스위치 → arch·mac-mini·Apple TV)는 기기별로 안 보인다.",
+                    "transformations": [
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^t(wo|en)-gigabitEthernet 1/0/(\\d+)(.*)$",
+                                "renamePattern": "P$2$3"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": 14,
+                    "type": "timeseries",
+                    "title": "포트 오류·폐기",
+                    "gridPos": {
+                        "h": 8,
+                        "w": 12,
+                        "x": 12,
+                        "y": 30
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "fieldConfig": {
+                        "defaults": {
+                            "unit": "pps",
+                            "custom": {
+                                "fillOpacity": 10,
+                                "showPoints": "never",
+                                "spanNulls": false
+                            }
+                        },
+                        "overrides": []
+                    },
+                    "options": {
+                        "legend": {
+                            "displayMode": "table",
+                            "placement": "right",
+                            "calcs": [
+                                "mean",
+                                "max"
+                            ]
+                        },
+                        "tooltip": {
+                            "mode": "multi",
+                            "sort": "desc"
+                        }
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "(rate(ifInErrors{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval]) + rate(ifOutErrors{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval])) > 0",
+                            "legendFormat": "{{ifName}} 오류"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "(rate(ifInDiscards{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval]) + rate(ifOutDiscards{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}[$__rate_interval])) > 0",
+                            "legendFormat": "{{ifName}} 폐기"
+                        }
+                    ],
+                    "description": "0 이면 안 그린다. 폐기(discard) = 버퍼가 넘쳐 버린 패킷 — 공유 구간 포화의 직접 증거.",
+                    "transformations": [
+                        {
+                            "id": "renameByRegex",
+                            "options": {
+                                "regex": "^t(wo|en)-gigabitEthernet 1/0/(\\d+)(.*)$",
+                                "renamePattern": "P$2$3"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": 15,
+                    "type": "table",
+                    "title": "포트 링크 상태",
+                    "gridPos": {
+                        "h": 7,
+                        "w": 24,
+                        "x": 0,
+                        "y": 38
+                    },
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": ""
+                    },
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "ifOperStatus{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}",
+                            "instant": true,
+                            "range": false,
+                            "format": "table"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": ""
+                            },
+                            "expr": "ifHighSpeed{instance=\"switch01\",ifName=~\"two-gigabitEthernet.*|ten-gigabitEthernet.*\"}",
+                            "instant": true,
+                            "range": false,
+                            "format": "table"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "id": "merge",
+                            "options": {}
+                        },
+                        {
+                            "id": "organize",
+                            "options": {
+                                "excludeByName": {
+                                    "Time": true,
+                                    "__name__": true,
+                                    "instance": true,
+                                    "job": true,
+                                    "ifDescr": true,
+                                    "ifIndex": true
+                                },
+                                "renameByName": {
+                                    "ifName": "포트",
+                                    "ifAlias": "설명",
+                                    "Value #A": "상태",
+                                    "Value #B": "속도 (Mbps)"
+                                },
+                                "indexByName": {
+                                    "ifName": 0,
+                                    "ifAlias": 1,
+                                    "Value #A": 2,
+                                    "Value #B": 3
+                                }
+                            }
+                        },
+                        {
+                            "id": "sortBy",
+                            "options": {
+                                "sort": [
+                                    {
+                                        "field": "포트"
+                                    }
+                                ]
+                            }
+                        }
+                    ],
+                    "fieldConfig": {
+                        "defaults": {},
+                        "overrides": [
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "상태"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "mappings",
+                                        "value": [
+                                            {
+                                                "type": "value",
+                                                "options": {
+                                                    "1": {
+                                                        "text": "up",
+                                                        "color": "green"
+                                                    },
+                                                    "2": {
+                                                        "text": "down",
+                                                        "color": "text"
+                                                    },
+                                                    "7": {
+                                                        "text": "lowerLayerDown",
+                                                        "color": "text"
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "custom.cellOptions",
+                                        "value": {
+                                            "type": "color-text"
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "matcher": {
+                                    "id": "byName",
+                                    "options": "속도 (Mbps)"
+                                },
+                                "properties": [
+                                    {
+                                        "id": "thresholds",
+                                        "value": {
+                                            "mode": "absolute",
+                                            "steps": [
+                                                {
+                                                    "color": "red",
+                                                    "value": null
+                                                },
+                                                {
+                                                    "color": "text",
+                                                    "value": 1
+                                                },
+                                                {
+                                                    "color": "orange",
+                                                    "value": 2
+                                                },
+                                                {
+                                                    "color": "text",
+                                                    "value": 1000
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "id": "custom.cellOptions",
+                                        "value": {
+                                            "type": "color-text"
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "options": {
+                        "showHeader": true
+                    }
+                }
+            ]
+        }

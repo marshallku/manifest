@@ -16,6 +16,14 @@ containerd라서 cgroup 경로만 내보내고 pod/container 라벨이 붙지 �
 app01의 Docker 컨테이너는 `docker-compose/monitoring/`(cAdvisor + node-exporter),
 pi01은 `docker-compose/pi01/node-exporter/`, Mac mini는 네이티브 node_exporter.
 
+네트워크는 `Homelab Network` 대시보드 한 장이다. 데이터 출처는 셋이다.
+- 회선 품질: `smokeping/`(ICMP 1초)
+- WAN·세그먼트·VM 트래픽: pve02 의 Debian `prometheus-node-exporter`가 읽는 tap 카운터(infra `bootstrap/pve02.sh`)
+- 스위치 포트: `snmp-exporter/`(SNMP v2c 읽기 전용 커뮤니티 — SealedSecret `snmp-exporter-auth`)
+
+OPNsense 자체 exporter(os-node_exporter)는 펌웨어 업데이트를 먼저 요구해서 쓰지 않는다.
+업데이트 중에 재부팅되면 집 전체가 끊긴다.
+
 대시보드는 둘로 나뉜다 — 클러스터 워크로드는 `container-monitoring`
 (namespace/pod/container 라벨), app01의 Docker 컨테이너는 `docker-monitoring`
 (`name` 라벨). 라벨 스키마가 달라서 한 장으로 합칠 수 없다.
@@ -44,6 +52,10 @@ kubectl apply -f kubernetes/monitoring/prometheus/
 ## 5. Alloy (Loki 필요)
 
 kubectl apply -f kubernetes/monitoring/alloy/
+
+## 5b. 네트워크 exporter
+
+kubectl apply -f kubernetes/monitoring/smokeping/ -f kubernetes/monitoring/snmp-exporter/
 
 ## 6. Grafana (Prometheus + Loki 필요)
 

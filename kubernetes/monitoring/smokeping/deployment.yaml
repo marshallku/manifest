@@ -1,0 +1,96 @@
+# Line-quality probe: ICMP to a handful of hosts every second, exported as
+# RTT histograms plus request/response counters, scraped by Prometheus (job
+# `smokeping`, kubernetes/monitoring/prometheus/configmap.yaml).
+#
+# What it can and cannot tell you: probes leave k3s01 (servers segment), so the
+# path is k3s01 → OPNsense → WAN. That is the part every device in the house
+# shares, which is what the question "was the line bad at 21:40?" is about.
+# It does not see a device's own access link, and it is IPv4 only.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: smokeping
+    namespace: mgmt01
+    labels:
+        app: smokeping
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: smokeping
+    template:
+        metadata:
+            labels:
+                app: smokeping
+        spec:
+            containers:
+                - name: smokeping
+                  image: quay.io/superq/smokeping-prober:v0.12.0
+                  args:
+                      - --config.file=/etc/smokeping/config.yaml
+                  ports:
+                      - name: http
+                        containerPort: 9374
+                  # Raw ICMP sockets. NET_RAW alone, not a privileged container.
+                  securityContext:
+                      capabilities:
+                          drop: ["ALL"]
+                          add: ["NET_RAW"]
+                  readinessProbe:
+                      httpGet:
+                          path: /metrics
+                          port: 9374
+                      periodSeconds: 30
+                  resources:
+                      requests:
+                          cpu: 10m
+                          memory: 32Mi
+                      limits:
+                          memory: 64Mi
+                  volumeMounts:
+                      - name: config
+                        mountPath: /etc/smokeping
+            volumes:
+                - name: config
+                  configMap:
+                      name: smokeping-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: smokeping-config
+    namespace: mgmt01
+    labels:
+        app: smokeping
+data:
+    # 10.10.0.1 is the internal baseline — if it is slow too, the problem is
+    # OPNsense or pve02, not the ISP. 182.228.141.1 is the ISP's first hop
+    # (WAN_DHCP gateway); the rest are increasingly far. www.youtube.com is RTT
+    # to YouTube's front end only, not a stand-in for video delivery.
+    config.yaml: |
+        targets:
+          - hosts:
+              - 10.10.0.1
+              - 182.228.141.1
+              - 168.126.63.1
+              - 1.1.1.1
+              - 8.8.8.8
+              - www.youtube.com
+            interval: 1s
+            network: ip4
+            protocol: icmp
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: smokeping
+    namespace: mgmt01
+    labels:
+        app: smokeping
+spec:
+    selector:
+        app: smokeping
+    ports:
+        - name: http
+          port: 9374
+          targetPort: 9374

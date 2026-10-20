@@ -94,3 +94,5 @@ spec:
                                 name: grafana-dashboard-home-sensors
                           - configMap:
                                 name: grafana-dashboard-mac-mini
+                          - configMap:
+                                name: grafana-dashboard-network

@@ -101,6 +101,45 @@ data:
                   instance: mac-mini
                   node: mac-mini
 
+          # pve02 — the hypervisor, Debian's prometheus-node-exporter bound to its
+          # LAN address (infra bootstrap/pve02.sh). Besides the host itself this
+          # is where OPNsense's traffic is read: each tap200iN is one OPNsense
+          # vNIC (i0 LAN, i1 WAN, i2 SERVERS, i3 LAB, i4 IoT, i5 GUEST), counted
+          # from the host side so rx/tx are the VM's tx/rx. nic1 is WAN's only
+          # physical port.
+          - job_name: pve02
+            static_configs:
+              - targets:
+                  - 10.10.0.20:9100
+                labels:
+                  instance: pve02
+                  node: pve02
+
+          # Line quality — ICMP RTT/loss from k3s01 through OPNsense to the ISP
+          # and beyond (kubernetes/monitoring/smokeping/).
+          - job_name: smokeping
+            static_configs:
+              - targets:
+                  - smokeping:9374
+
+          # switch01 per-port counters via snmp_exporter. The target is the
+          # switch; __address__ is rewritten to the exporter.
+          - job_name: switch01
+            metrics_path: /snmp
+            params:
+              module: [if_mib]
+              auth: [switch01]
+            static_configs:
+              - targets:
+                  - 10.10.0.10
+            relabel_configs:
+              - source_labels: [__address__]
+                target_label: __param_target
+              - target_label: instance
+                replacement: switch01
+              - target_label: __address__
+                replacement: snmp-exporter:9116
+
           # pi01 (Raspberry Pi 4B) — runs the secondary AdGuard and the external
           # uptime probe, deliberately outside the cluster (and off pve02) so a
           # cluster outage does not take LAN DNS and alerting with it. Same
