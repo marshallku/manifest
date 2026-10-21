@@ -1,0 +1,18 @@
+# aide-site — AIDE's homepage and manual (https://github.com/marshallku/aide-site).
+#
+# A static Astro build served by nginx-unprivileged on 8080. The repository and its GHCR package
+# are public, so there is no pull secret and no secret at all. The repo's deploy workflow pushes
+# ghcr.io/marshallku/aide-site:<sha> and rewrites the tag below (MANIFEST_REPO_TOKEN).
+app: aide-site
+
+imagePullSecret: ""
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/aide-site:ec4f662129934c7dff705b946fa2d6b7e46558e9
+    port: 8080
+    host: aide.marshallku.dev
+    healthPath: /healthz
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { memory: 64Mi }
