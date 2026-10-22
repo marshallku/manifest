@@ -33,7 +33,7 @@ services:
             - /mnt/hdd/data/dongjoo.me/db2:/var/lib/mysql
 
     wordpress:
-        image: wordpress:6.9.0-php8.5-apache
+        image: wordpress:7.1.3-php8.5-apache
         container_name: dongjoome-wordpress
         # The container search domain is `marshallku.dev`, which has a public
         # `*` record, so an AAAA lookup for a bare service name like `mysql`

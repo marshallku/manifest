@@ -79,7 +79,14 @@ used. Verified: an authenticated `dongdu` session gets 403 on
 `plugin-install.php`, and `install_plugins`, `edit_plugins`, `update_plugins`
 and `edit_themes` all return false.
 
-## Updating plugins
+## Updating core and plugins
+
+**Bumping the image tag updates PHP, not WordPress.** The image only copies
+WordPress into `/var/www/html` when the directory is empty, and here it is a
+bind mount that already has a core in it. `DISALLOW_FILE_MODS` also turns off
+core auto-updates. So the core stayed at 6.9.0 from the rebuild until
+2026-10-22 while the tag read `6.9.0`. A core update is its own step:
+`wp core update` with the recipe below, then `wp core verify-checksums`.
 
 `DISALLOW_FILE_MODS` blocks the admin UI, but the constant lives in
 `WORDPRESS_CONFIG_EXTRA` and so only applies to the web container. A wp-cli

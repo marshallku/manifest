@@ -7,10 +7,13 @@
 # the "only one copy of the data" problem at the top of the hardware roadmap.
 # Here it sits on `tank`, a two-drive ZFS mirror with checksums.
 #
-# Image versions are pinned to exactly what prd01 was running (Nextcloud
-# 31.0.13, MariaDB 12.1.2). Do not bump them in the same change that moves the
-# data: if something breaks you want to know whether it was the move or the
-# upgrade. Upgrade as a separate, later commit.
+# The move kept the versions prd01 ran (Nextcloud 31.0.13, MariaDB 12.1.2) so
+# that a breakage would point at either the move or an upgrade, not both.
+#
+# Nextcloud cannot skip a major: 31 -> 35 on 2026-10-22 went 32.0.15, 33.0.10,
+# 34.0.5, 35.0.2 in turn, each one left to finish `occ upgrade` before the
+# next. The jump was forced: 31 is EOL, so no 31.x image was rebuilt on the
+# PHP that fixes PHP2Shell (CVE-2026-109618/109619).
 #
 # Storage split, forced by `tank` being a mirror of two DM-SMR drives:
 #
@@ -65,7 +68,7 @@ services:
             - /var/lib/homelab/nextcloud/redis:/data
 
     app:
-        image: nextcloud:31.0.13-apache
+        image: nextcloud:35.0.2-apache
         container_name: nextcloud_app
         restart: unless-stopped
         ports:
