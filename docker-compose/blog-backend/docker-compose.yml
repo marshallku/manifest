@@ -1,6 +1,6 @@
 services:
     database:
-        image: mongo:8.2.3
+        image: mongo:8.2.12
         restart: always
         container_name: blog-database
         ports:

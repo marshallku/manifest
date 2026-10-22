@@ -2,9 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
+    app.kubernetes.io/component: applicationset-controller
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
-    app.kubernetes.io/component: applicationset-controller
   name: argocd-applicationset-controller
   namespace: argocd
 spec:
@@ -19,15 +19,13 @@ spec:
       containers:
         - args:
             - /usr/local/bin/argocd-applicationset-controller
-          image: quay.io/argoproj/argocd:v3.3.5
-          imagePullPolicy: IfNotPresent
-          name: argocd-applicationset-controller
-          ports:
-            - containerPort: 7000
-              name: webhook
-            - containerPort: 8080
-              name: metrics
           env:
+            - name: GRPC_ENABLE_TXT_SERVICE_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.grpc.enable.txt.service.config
+                  name: argocd-cmd-params-cm
+                  optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_GLOBAL_PRESERVED_ANNOTATIONS
               valueFrom:
                 configMapKeyRef:
@@ -89,8 +87,50 @@ spec:
             - name: ARGOCD_LOG_FORMAT_TIMESTAMP
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: log.format.timestamp
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_CLIENT_QPS
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.client.qps
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_CLIENT_BURST
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.client.burst
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_CLIENT_MAX_IDLE_CONNECTIONS
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.client.max.idle.connections
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_TCP_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.tcp.timeout
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_TCP_KEEPALIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.tcp.keepalive
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_TLS_HANDSHAKE_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.tls.handshake.timeout
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_K8S_TCP_IDLE_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.k8s.tcp.idle.timeout
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_DRY_RUN
               valueFrom:
@@ -125,26 +165,44 @@ spec:
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_PLAINTEXT
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.repo.server.plaintext
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_STRICT_TLS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.repo.server.strict.tls
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_CA_CERT_PATH
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.repo.server.ca.cert.path
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_CLIENT_CERT_PATH
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.repo.server.client.cert.path
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_CLIENT_CERT_KEY_PATH
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.repo.server.client.cert.key.path
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.repo.server.timeout.seconds
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_CONCURRENT_RECONCILIATIONS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.concurrent.reconciliations.max
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_NAMESPACES
               valueFrom:
@@ -161,39 +219,56 @@ spec:
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_ALLOWED_SCM_PROVIDERS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.allowed.scm.providers
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_SCM_PROVIDERS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.enable.scm.providers
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_GITHUB_API_METRICS
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.enable.github.api.metrics
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_WEBHOOK_PARALLELISM_LIMIT
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.webhook.parallelism.limit
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_REQUEUE_AFTER
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.requeue.after
+                  name: argocd-cmd-params-cm
                   optional: true
             - name: ARGOCD_APPLICATIONSET_CONTROLLER_MAX_RESOURCES_STATUS_COUNT
               valueFrom:
                 configMapKeyRef:
-                  name: argocd-cmd-params-cm
                   key: applicationsetcontroller.status.max.resources.count
+                  name: argocd-cmd-params-cm
                   optional: true
+          image: quay.io/argoproj/argocd:v3.5.6
+          imagePullPolicy: IfNotPresent
+          name: argocd-applicationset-controller
+          ports:
+            - containerPort: 7000
+              name: webhook
+            - containerPort: 8080
+              name: metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
           volumeMounts:
             - mountPath: /app/config/ssh
               name: ssh-known-hosts
@@ -205,19 +280,14 @@ spec:
               name: gpg-keyring
             - mountPath: /tmp
               name: tmp
-            - name: argocd-repo-server-tls
-              mountPath: /app/config/reposerver/tls
-            - name: argocd-cmd-params-cm
-              mountPath: /home/argocd/params
-          securityContext:
-            capabilities:
-              drop:
-                - ALL
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
+            - mountPath: /app/config/reposerver/tls
+              name: argocd-repo-server-tls
+            - mountPath: /app/config/reposerver/mtls
+              name: argocd-repo-server-mtls
+            - mountPath: /home/argocd/params
+              name: argocd-cmd-params-cm
+      nodeSelector:
+        kubernetes.io/os: linux
       serviceAccountName: argocd-applicationset-controller
       volumes:
         - configMap:
@@ -229,14 +299,12 @@ spec:
         - configMap:
             name: argocd-gpg-keys-cm
           name: gpg-keys
-        - emptyDir: { }
+        - emptyDir: {}
           name: gpg-keyring
-        - emptyDir: { }
+        - emptyDir: {}
           name: tmp
         - name: argocd-repo-server-tls
           secret:
-            secretName: argocd-repo-server-tls
-            optional: true
             items:
               - key: tls.crt
                 path: tls.crt
@@ -244,12 +312,23 @@ spec:
                 path: tls.key
               - key: ca.crt
                 path: ca.crt
-        - name: argocd-cmd-params-cm
-          configMap:
             optional: true
-            name: argocd-cmd-params-cm
+            secretName: argocd-repo-server-tls
+        - name: argocd-repo-server-mtls
+          secret:
+            items:
+              - key: client.crt
+                path: client.crt
+              - key: client.key
+                path: client.key
+              - key: server-ca.crt
+                path: server-ca.crt
+            optional: true
+            secretName: argocd-repo-server-mtls
+        - configMap:
             items:
               - key: applicationsetcontroller.profile.enabled
                 path: profiler.enabled
-      nodeSelector:
-        kubernetes.io/os: linux
+            name: argocd-cmd-params-cm
+            optional: true
+          name: argocd-cmd-params-cm

@@ -1,6 +1,6 @@
 services:
   portainer:
-    image: portainer/portainer-ce:2.33.6-alpine
+    image: portainer/portainer-ce:2.45.3-alpine
     ports:
       - 8000:8000
       - 9443:9443

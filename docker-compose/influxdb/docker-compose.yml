@@ -1,6 +1,6 @@
 services:
   influxdb:
-    image: influxdb:2.7.11-alpine
+    image: influxdb:2.9.1-alpine
     container_name: influxdb
     restart: unless-stopped
     ports:

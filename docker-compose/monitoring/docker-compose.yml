@@ -14,7 +14,9 @@
 
 services:
     cadvisor:
-        image: gcr.io/cadvisor/cadvisor:v0.55.1
+        # gcr.io/cadvisor stopped receiving tags after v0.55; releases are on
+        # ghcr.io now.
+        image: ghcr.io/google/cadvisor:v0.60.6
         container_name: cadvisor
         restart: unless-stopped
         ports:
@@ -54,7 +56,7 @@ services:
     # Container logs, shipped to the cluster's Loki. Its counterpart in the
     # cluster reads the Kubernetes API and never sees this host's Docker daemon.
     alloy:
-        image: grafana/alloy:v1.13.0
+        image: grafana/alloy:v1.21.1
         container_name: alloy
         restart: unless-stopped
         command:
@@ -70,7 +72,7 @@ services:
             - alloy-data:/var/lib/alloy
 
     node-exporter:
-        image: prom/node-exporter:v1.10.2
+        image: prom/node-exporter:v1.12.1
         container_name: node-exporter
         restart: unless-stopped
         network_mode: host

@@ -1,7 +1,7 @@
 services:
     web:
         container_name: blog-frontend
-        image: nginx:1.29-alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+        image: nginx:1.31.8-alpine@sha256:e2d97c2b8c016f12c2f1a27d095685063b2f281c4edf2babfde6001cf4fb77a8
         restart: unless-stopped
         ports:
             # 이 호스트의 LAN 주소로만 공개한다. 엣지(edge01)만 붙으면 된다.

@@ -14,7 +14,7 @@
 
 services:
     jellyfin:
-        image: jellyfin/jellyfin:10.11.11
+        image: jellyfin/jellyfin:12.2
         container_name: jellyfin
         restart: unless-stopped
         # Runs as the unprivileged `marshall` (1000:1000) rather than root; the

@@ -15,7 +15,7 @@
 # Hence the env split below — a service is handed only the secrets it uses.
 services:
     mysql:
-        image: mysql:9.4
+        image: mysql:9.7.4
         # The service is `mysql`, not `db`, so that Compose does not try to
         # adopt the retired `dongjoome-db-1` container that still holds the
         # compromised datadir.
@@ -74,7 +74,7 @@ services:
             - /mnt/hdd/data/dorp:/var/www/html/wp-content/themes/dorp
 
     remark:
-        image: umputun/remark42:v1.14.0
+        image: umputun/remark42:v1.18.0
         container_name: remark42
         # The container search domain is `marshallku.dev`, which has a public
         # `*` record, so an AAAA lookup for a bare service name like `mysql`

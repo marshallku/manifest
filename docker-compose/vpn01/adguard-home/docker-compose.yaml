@@ -12,7 +12,7 @@
 
 services:
     adguardhome:
-        image: adguard/adguardhome:v0.107.71 # keep in lockstep with the primary
+        image: adguard/adguardhome:v0.107.79 # keep in lockstep with the primary
         container_name: adguardhome
         restart: unless-stopped
         # Host networking, like the pi01 replica. Behind a bridge every query
@@ -34,7 +34,7 @@ services:
             - /var/lib/homelab/adguard-home/conf:/opt/adguardhome/conf
 
     adguardhome-sync:
-        image: ghcr.io/bakito/adguardhome-sync:v0.9.2
+        image: ghcr.io/bakito/adguardhome-sync:v0.9.4
         container_name: adguardhome-sync
         restart: unless-stopped
         depends_on:

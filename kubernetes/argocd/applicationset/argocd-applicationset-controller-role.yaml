@@ -2,9 +2,9 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   labels:
+    app.kubernetes.io/component: applicationset-controller
     app.kubernetes.io/name: argocd-applicationset-controller
     app.kubernetes.io/part-of: argocd
-    app.kubernetes.io/component: applicationset-controller
   name: argocd-applicationset-controller
   namespace: argocd
 rules:
@@ -57,8 +57,6 @@ rules:
       - get
       - list
       - watch
-  # argocd-applicationset-controller leader election rules
-  # Create with resourceNames fails, so use a separate rule for the lease creation
   - apiGroups:
       - coordination.k8s.io
     resources:
@@ -67,11 +65,10 @@ rules:
       - create
   - apiGroups:
       - coordination.k8s.io
+    resourceNames:
+      - 58ac56fa.applicationsets.argoproj.io
     resources:
       - leases
-    resourceNames:
-      # Defined in `cmd/argocd-applicationset-controller/commands/applicationset_controller.go`
-      - 58ac56fa.applicationsets.argoproj.io
     verbs:
       - get
       - update
