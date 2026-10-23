@@ -11,5 +11,7 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - PGDATA=/var/lib/postgresql/18/docker
     volumes:
-      - ~/data/postgres-dev:/var/lib/postgresql/18/docker
+      # Absolute, not ~: `sudo docker compose up` expands ~ to /root, mounts an empty
+      # directory, and initdb starts a fresh cluster (2026-10-22, 26h outage).
+      - /home/marshall/data/postgres-dev:/var/lib/postgresql/18/docker
       - /mnt/hdd/backup/postgres-dev:/backup

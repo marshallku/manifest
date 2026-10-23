@@ -14,7 +14,8 @@ services:
       - /mnt/hdd/data/n8n:/home/node/.n8n
       #- ~/.claude/:/home/node/.claude:ro
       #- ~/.claude.json:/home/node/.claude.json:ro
-      - ~/.ssh/n8n_key:/home/node/.ssh/id_ed25519:ro
+      # Absolute, not ~: under sudo ~ is /root and Docker mounts an empty directory.
+      - /home/marshall/.ssh/n8n_key:/home/node/.ssh/id_ed25519:ro
       - ./ssh_config:/home/node/.ssh/config:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
