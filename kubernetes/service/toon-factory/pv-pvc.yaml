@@ -1,0 +1,46 @@
+# toon-factory data: SQLite (+ daily VACUUM INTO backups), assets/ (renders), exports/ and previews/.
+# Static hostPath PV with Retain, like life-wiki — the chart only references this claim, so nothing
+# ArgoCD prunes can delete the bibles, renders and exports. The image runs as UID 10001: the directory
+# must be owned by it (see README — hostPath ignores fsGroup).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: toon-factory-data-pv
+  labels:
+    app.kubernetes.io/name: toon-factory
+    app.kubernetes.io/part-of: toon-factory
+spec:
+  capacity:
+    storage: 20Gi # informational: hostPath has no quota
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /var/lib/k3s-data/toon-factory
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: toon-factory-data
+  namespace: toon-factory
+  labels:
+    app.kubernetes.io/name: toon-factory
+    app.kubernetes.io/part-of: toon-factory
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 20Gi
+  volumeName: toon-factory-data-pv

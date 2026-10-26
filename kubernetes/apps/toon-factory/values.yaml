@@ -1,0 +1,36 @@
+# Factory app values (source: marshallku/toon-factory deploy/values.yaml).
+# Namespace prerequisites (PV/PVC, sealed secrets) are in deploy/service/ → manifest kubernetes/service/toon-factory/.
+#
+# replicas 1 + Recreate: SQLite and content-addressed assets on a hostPath PV, one render-queue worker.
+# Memory: strip composition holds a few 800×10000 RGBA images and ffmpeg renders 1080×1920 shorts.
+app: toon-factory
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/toon-factory:79547ebf5c36a3098d861c6b9cddbb7ffce9f9a9
+    port: 8080
+    host: toon.marshallku.dev
+    healthPath: /healthz
+    replicas: 1
+    strategy: Recreate
+    env:
+      - name: PUBLIC_ORIGIN
+        value: https://toon.marshallku.dev
+      - name: BRIDGE_URL
+        value: https://10.10.0.50:8941
+      - name: MEDIA_BRIDGE_URL
+        value: https://10.10.0.51:8942
+      - name: MEDIA_BRIDGE_CERT_SHA256
+        value: 0b323ef7228c722fec6320dc748a9e2da7804cec8637f476486df223d034b056
+    secretEnv:
+      - PASSWORD_HASH
+      - BRIDGE_TOKEN
+      - BRIDGE_CERT_SHA256
+      - MEDIA_BRIDGE_TOKEN
+    volumes:
+      - name: data
+        claimName: toon-factory-data
+        mountPath: /data
+    resources:
+      requests: { cpu: 50m, memory: 96Mi }
+      limits: { memory: 1Gi }
