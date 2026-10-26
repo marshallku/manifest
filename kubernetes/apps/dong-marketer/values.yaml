@@ -9,7 +9,7 @@ app: dong-marketer
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/dong-marketer:f3155bb54be3a04cb5867d44794dc673ff1ab42e
+    image: ghcr.io/marshallku/dong-marketer:f26a8e2fe0696419f391242bfd360a81a7fc16b9
     port: 8080
     host: dong.marshallku.dev
     healthPath: /healthz
@@ -22,6 +22,8 @@ surfaces:
         value: "off"
       - name: BRIDGE_URL
         value: https://10.10.0.50:8941
+      - name: COMFY_URL
+        value: http://10.10.0.51:8188
     secretEnv:
       - PASSWORD_HASH
       - BRIDGE_TOKEN
