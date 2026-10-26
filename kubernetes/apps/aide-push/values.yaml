@@ -1,0 +1,30 @@
+# aide-push — the APNs push relay (`aide push-relay`, https://github.com/marshallku/aide, ADR-0023).
+#
+# It holds the team's APNs key and forwards notifications from self-hosted AIDE servers and comux
+# hosts to the AIDE and copad iOS apps, so their owners need no Apple developer account. Stateless:
+# no database, no volume. The image is AIDE's server image with another command; the package is
+# private, hence ghcr-secret. The key and its ids come from aide-push-secret
+# (../../service/aide-push/, sealed, applied by hand once).
+app: aide-push
+
+surfaces:
+  api:
+    image: ghcr.io/marshallku/aide-server:relay-3a720bd
+    args: [push-relay]
+    port: 8080
+    host: aide-push.marshallku.dev
+    healthPath: /healthz
+    env:
+      - name: AIDE_ADDR
+        value: ":8080"
+      # copad's iOS app, besides AIDE's own (AIDE_APNS_BUNDLE_ID's default).
+      - name: AIDE_RELAY_BUNDLES
+        value: com.marshall.copad.ios
+      # The tunnel connector is the peer; its X-Forwarded-For names the client, so the per-client
+      # limit counts each server separately.
+      - name: AIDE_TRUSTED_PROXIES
+        value: 10.42.0.0/16
+    secretEnv: [AIDE_APNS_KEY, AIDE_APNS_KEY_ID, AIDE_APNS_TEAM_ID]
+    resources:
+      requests: { cpu: 10m, memory: 16Mi }
+      limits: { memory: 64Mi }
