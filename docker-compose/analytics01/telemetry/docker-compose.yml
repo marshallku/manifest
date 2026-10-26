@@ -1,0 +1,83 @@
+# Product-event pipeline for the app factory: ClickHouse + the telemetry collector.
+# Code: github.com/marshallku/telemetry. Host: analytics01 (10.20.0.42), data on /srv/analytics
+# (vault HDD, disposable by decision — see infra tofu/analytics01.tf and README.md here).
+#
+# `docker compose up -d` runs `migrate` to completion before the collector starts, so every
+# deploy applies the (idempotent) schema and the typed views of the collector's registry.
+
+x-telemetry: &telemetry
+    image: ghcr.io/marshallku/telemetry:98e5d74b3ebfdb5a63ba0d56800e871f2489a169
+    restart: unless-stopped
+
+services:
+    clickhouse:
+        image: clickhouse/clickhouse-server:25.8.33.6
+        container_name: clickhouse
+        restart: unless-stopped
+        environment:
+            CLICKHOUSE_PASSWORD: ${CH_ADMIN_PASSWORD:?}
+            CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+            CH_COLLECTOR_PASSWORD: ${CH_COLLECTOR_PASSWORD:?}
+            CH_GRAFANA_PASSWORD: ${CH_GRAFANA_PASSWORD:?}
+        ports:
+            # Grafana on k3s01 reads from here. LAN address only.
+            - 10.20.0.42:8123:8123
+        volumes:
+            - /srv/analytics/clickhouse:/var/lib/clickhouse
+            - ./clickhouse/config.d/small-server.xml:/etc/clickhouse-server/config.d/small-server.xml:ro
+            - ./clickhouse/users.d/telemetry.xml:/etc/clickhouse-server/users.d/telemetry.xml:ro
+        ulimits:
+            nofile:
+                soft: 262144
+                hard: 262144
+        healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+            interval: 5s
+            retries: 30
+
+    migrate:
+        <<: *telemetry
+        restart: "no"
+        command: ["migrate"]
+        environment:
+            CLICKHOUSE_URL: http://clickhouse:8123
+            CLICKHOUSE_USER: default
+            CLICKHOUSE_PASSWORD: ${CH_ADMIN_PASSWORD:?}
+        depends_on:
+            clickhouse:
+                condition: service_healthy
+
+    collector:
+        <<: *telemetry
+        container_name: telemetry-collector
+        environment:
+            CLICKHOUSE_URL: http://clickhouse:8123
+            CLICKHOUSE_USER: collector
+            CLICKHOUSE_PASSWORD: ${CH_COLLECTOR_PASSWORD:?}
+        ports:
+            # Prometheus scrapes /metrics from k3s01. Not public yet: no ingress until real apps send.
+            - 10.20.0.42:8080:8080
+        volumes:
+            - /srv/analytics/spool:/data
+            - ./keys.yaml:/etc/telemetry/keys.yaml:ro
+        depends_on:
+            migrate:
+                condition: service_completed_successfully
+        healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+            interval: 10s
+            retries: 6
+
+    # Demo traffic (env=demo) through the real collector. Not started by default:
+    #   docker compose run --rm fake fake --endpoint http://collector:8080 --backfill 30 --truth /demo/truth.json
+    #   docker compose --profile demo up -d fake      # then a live trickle every 30s
+    fake:
+        <<: *telemetry
+        profiles: [demo]
+        command: ["fake", "--endpoint", "http://collector:8080", "--backfill", "0", "--live", "30s"]
+        volumes:
+            - ./keys.yaml:/etc/telemetry/keys.yaml:ro
+            - /srv/analytics/demo:/demo
+        depends_on:
+            collector:
+                condition: service_healthy

@@ -1,0 +1,12 @@
+# Copy to keys.yaml on the host (gitignored: server keys are secrets).
+# Identity is stamped from the key, never from the client: app_id, surface, env, dataset.
+# Publishable keys (pk_) ride in the URL from browsers; server keys (sk_, 24+ chars) only in
+# Authorization headers. The identified dataset takes server keys only.
+#
+# Demo keys for `telemetry fake` (env=demo, 35-day max_event_age so a 30-day backfill fits):
+keys:
+  - { key: pk_demo_maji, app_id: maji, surface: web, env: demo, dataset: measure, kind: publishable, max_event_age: 840h }
+  - { key: sk_demo_maji_CHANGE_ME_00000000, app_id: maji, surface: api, env: demo, dataset: measure, kind: server, max_event_age: 840h }
+  - { key: pk_demo_print_money, app_id: print-money, surface: web, env: demo, dataset: measure, kind: publishable, max_event_age: 840h }
+  - { key: pk_demo_hwakangs, app_id: hwakangs, surface: toss, env: demo, dataset: measure, kind: publishable, max_event_age: 840h }
+  - { key: sk_demo_hwakangs_CHANGE_ME_0000, app_id: hwakangs, surface: api, env: demo, dataset: identified, kind: server, max_event_age: 840h }

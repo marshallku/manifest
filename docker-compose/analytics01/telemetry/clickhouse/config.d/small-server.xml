@@ -1,0 +1,37 @@
+<!-- analytics01 has 8 GiB and one HDD. ClickHouse's defaults assume a dedicated, larger box. -->
+<clickhouse>
+    <!-- Half the VM: the collector, Docker and the page cache need the rest. -->
+    <max_server_memory_usage_to_ram_ratio>0.5</max_server_memory_usage_to_ram_ratio>
+    <mark_cache_size>268435456</mark_cache_size>
+    <index_mark_cache_size>67108864</index_mark_cache_size>
+    <uncompressed_cache_size>67108864</uncompressed_cache_size>
+    <max_concurrent_queries>32</max_concurrent_queries>
+    <!-- Docker here has no IPv6; the default [::] listeners only log warnings. -->
+    <listen_host>0.0.0.0</listen_host>
+
+    <logger>
+        <level>warning</level>
+        <console>1</console>
+    </logger>
+
+    <!-- System log tables write all day on a spinning disk and grow without bound by default.
+         Keep the ones worth reading, for a week; drop the profiling ones. -->
+    <query_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </query_log>
+    <part_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </part_log>
+    <metric_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </metric_log>
+    <asynchronous_metric_log>
+        <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
+    </asynchronous_metric_log>
+    <trace_log remove="1"/>
+    <text_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <query_thread_log remove="1"/>
+    <query_views_log remove="1"/>
+    <latency_log remove="1"/>
+</clickhouse>

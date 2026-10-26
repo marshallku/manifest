@@ -3,3 +3,6 @@
 **/secret.yaml
 
 .claude/settings.local.json
+
+# Ingest keys: server keys are secrets. keys.example.yaml is the committed template.
+docker-compose/analytics01/telemetry/keys.yaml

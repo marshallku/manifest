@@ -46,6 +46,15 @@ spec:
                             secretKeyRef:
                                 name: grafana-credentials
                                 key: influxdb-token
+                      - name: CLICKHOUSE_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: grafana-credentials
+                                key: clickhouse-password
+                      # Installed into /var/lib/grafana/plugins (the PVC) on start; pinned so a
+                      # restart never upgrades it underneath the dashboards.
+                      - name: GF_PLUGINS_PREINSTALL_SYNC
+                        value: grafana-clickhouse-datasource@4.22.1
                   readinessProbe:
                       httpGet:
                           path: /api/health
@@ -96,3 +105,5 @@ spec:
                                 name: grafana-dashboard-mac-mini
                           - configMap:
                                 name: grafana-dashboard-network
+                          - configMap:
+                                name: grafana-dashboard-telemetry

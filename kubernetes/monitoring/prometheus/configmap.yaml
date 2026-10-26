@@ -153,3 +153,13 @@ data:
                 labels:
                   instance: pi01
                   node: pi01
+
+          # analytics01 — the app factory's product-event collector
+          # (docker-compose/analytics01/telemetry). Intake, rejections by code, spool depth and
+          # whether the head batch is stuck. Rejections are counted here, never stored as events.
+          - job_name: telemetry
+            static_configs:
+              - targets:
+                  - 10.20.0.42:8080
+                labels:
+                  instance: analytics01

@@ -28,6 +28,15 @@ OPNsense 자체 exporter(os-node_exporter)는 펌웨어 업데이트를 먼저 �
 (namespace/pod/container 라벨), app01의 Docker 컨테이너는 `docker-monitoring`
 (`name` 라벨). 라벨 스키마가 달라서 한 장으로 합칠 수 없다.
 
+## 제품 이벤트 (telemetry)
+
+앱 공장의 제품 이벤트는 Loki가 아니라 analytics01의 ClickHouse에 있다
+(`docker-compose/analytics01/telemetry/`). Grafana는 `ClickHouse Telemetry` 데이터소스
+(`grafana_ro`, HTTP 8123, 플러그인 4.22.1을 `GF_PLUGINS_PREINSTALL_SYNC`로 고정)로 읽고,
+Prometheus는 수집기 `/metrics`를 job `telemetry`로 긁는다. 대시보드 두 장은
+`grafana/telemetry-dashboards.py`가 만들고 `grafana/check-telemetry-dashboards.py`가 모든 패널을
+Grafana 쿼리 API로 실행해 확인한다.
+
 ## 로그
 
 Alloy도 같은 이유로 둘이다. 클러스터 파드 로그는 in-cluster Alloy가 Kubernetes

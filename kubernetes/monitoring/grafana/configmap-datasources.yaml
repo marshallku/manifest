@@ -35,3 +35,23 @@ data:
             secureJsonData:
               token: $INFLUXDB_TOKEN
             editable: false
+
+          # Product events on analytics01 (docker-compose/analytics01/telemetry). grafana_ro is
+          # readonly=1 with max_execution_time as the only setting it may change, which is the one
+          # the plugin sends. HTTP because only 8123 is published; the plugin defaults to native.
+          - name: ClickHouse Telemetry
+            uid: clickhouse-telemetry
+            type: grafana-clickhouse-datasource
+            jsonData:
+              host: 10.20.0.42
+              port: 8123
+              protocol: http
+              secure: false
+              username: grafana_ro
+              defaultDatabase: core
+              # Sent as max_execution_time on every query. grafana_ro caps it at 60 (users.d), and
+              # the plugin's default is above that, which fails even the health check.
+              queryTimeout: "30"
+            secureJsonData:
+              password: $CLICKHOUSE_PASSWORD
+            editable: false

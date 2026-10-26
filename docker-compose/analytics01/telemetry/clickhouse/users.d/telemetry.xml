@@ -1,0 +1,62 @@
+<!-- Roles. Passwords come from the environment (.env on the host, never committed).
+     The e2e copy in github.com/marshallku/telemetry (e2e/clickhouse/users.xml) mirrors the
+     collector and grafana_ro parts; keep them in step. -->
+<clickhouse>
+    <profiles>
+        <collector>
+            <max_memory_usage>1000000000</max_memory_usage>
+        </collector>
+        <grafana_ro>
+            <readonly>1</readonly>
+            <max_execution_time>30</max_execution_time>
+            <max_memory_usage>1000000000</max_memory_usage>
+            <max_result_rows>200000</max_result_rows>
+            <result_overflow_mode>throw</result_overflow_mode>
+            <constraints>
+                <!-- The Grafana plugin sends max_execution_time with every query, and readonly=1
+                     refuses every setting change that is not explicitly allowed here. -->
+                <max_execution_time>
+                    <max>60</max>
+                    <changeable_in_readonly/>
+                </max_execution_time>
+                <max_memory_usage><const/></max_memory_usage>
+                <max_result_rows><const/></max_result_rows>
+            </constraints>
+        </grafana_ro>
+    </profiles>
+    <users>
+        <!-- The admin user (CLICKHOUSE_PASSWORD) is for migrations and humans on the host only:
+             loopback and the compose network, never the LAN. -->
+        <default>
+            <networks replace="replace">
+                <ip>127.0.0.1</ip>
+                <ip>::1</ip>
+                <ip>172.16.0.0/12</ip>
+            </networks>
+        </default>
+        <collector>
+            <password from_env="CH_COLLECTOR_PASSWORD"/>
+            <profile>collector</profile>
+            <quota>default</quota>
+            <networks><ip>172.16.0.0/12</ip></networks>
+            <grants>
+                <query>GRANT INSERT ON raw.events</query>
+            </grants>
+        </collector>
+        <grafana_ro>
+            <password from_env="CH_GRAFANA_PASSWORD"/>
+            <profile>grafana_ro</profile>
+            <quota>default</quota>
+            <!-- Grafana runs on k3s01 (10.20.0.20); pods reach this host SNATed to the node. -->
+            <networks>
+                <ip>10.20.0.0/24</ip>
+                <ip>172.16.0.0/12</ip>
+            </networks>
+            <grants>
+                <query>GRANT SELECT ON raw.*</query>
+                <query>GRANT SELECT ON core.*</query>
+                <query>GRANT SELECT ON agent.*</query>
+            </grants>
+        </grafana_ro>
+    </users>
+</clickhouse>
