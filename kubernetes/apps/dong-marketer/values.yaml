@@ -1,0 +1,39 @@
+# dong-marketer — @mrry.now content ops (source: private marshallku/dong-marketer, deploy/values.yaml).
+# Namespace prerequisites (PV/PVC, sealed secrets) live in manifest kubernetes/service/dong-marketer/.
+#
+# AI runs only on the operator's subscriptions: llm-bridge on the Mac mini spawns claude/codex/agy
+# (docs/plan-llm-bridge.md). Kagi is off (KAGI_URL=off); re-enable by adding a kagi surface + secrets.
+#
+# replicas 1 + Recreate is required: SQLite on a hostPath PV, single DM worker / job runner.
+app: dong-marketer
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/dong-marketer:f31b7653aa20a00aa94c3e25a600be039d6bc91b
+    port: 8080
+    host: dong.marshallku.dev
+    healthPath: /healthz
+    replicas: 1
+    strategy: Recreate
+    env:
+      - name: PUBLIC_ORIGIN
+        value: https://dong.marshallku.dev
+      - name: KAGI_URL
+        value: "off"
+      - name: BRIDGE_URL
+        value: https://10.10.0.50:8941
+    secretEnv:
+      - PASSWORD_HASH
+      - BRIDGE_TOKEN
+      - BRIDGE_CERT_SHA256
+      - IG_APP_SECRET
+      - IG_VERIFY_TOKEN
+      - IG_ACCESS_TOKEN
+      - IG_USER_ID
+    volumes:
+      - name: data
+        claimName: dong-marketer-data
+        mountPath: /data
+    resources:
+      requests: { cpu: 20m, memory: 48Mi }
+      limits: { memory: 256Mi }
