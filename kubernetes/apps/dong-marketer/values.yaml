@@ -9,7 +9,7 @@ app: dong-marketer
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/dong-marketer:f26a8e2fe0696419f391242bfd360a81a7fc16b9
+    image: ghcr.io/marshallku/dong-marketer:7ef6a7b58e11ed54ec5ab94fc214adc3b25f71c6
     port: 8080
     host: dong.marshallku.dev
     healthPath: /healthz
@@ -22,8 +22,11 @@ surfaces:
         value: "off"
       - name: BRIDGE_URL
         value: https://10.10.0.50:8941
-      - name: COMFY_URL
-        value: http://10.10.0.51:8188
+      # media-bridge on the operator's desktop (docs/comfy.md); the fingerprint is public, the token is sealed.
+      - name: MEDIA_BRIDGE_URL
+        value: https://10.10.0.51:8942
+      - name: MEDIA_BRIDGE_CERT_SHA256
+        value: 0b323ef7228c722fec6320dc748a9e2da7804cec8637f476486df223d034b056
     secretEnv:
       - PASSWORD_HASH
       - BRIDGE_TOKEN
@@ -32,6 +35,7 @@ surfaces:
       - IG_VERIFY_TOKEN
       - IG_ACCESS_TOKEN
       - IG_USER_ID
+      - MEDIA_BRIDGE_TOKEN
     volumes:
       - name: data
         claimName: dong-marketer-data
