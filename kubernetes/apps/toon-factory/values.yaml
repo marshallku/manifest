@@ -7,7 +7,7 @@ app: toon-factory
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/toon-factory:79547ebf5c36a3098d861c6b9cddbb7ffce9f9a9
+    image: ghcr.io/marshallku/toon-factory:36ba79e2dc21e09f939411b978a7753fcbe02511
     port: 8080
     host: toon.marshallku.dev
     healthPath: /healthz
@@ -16,6 +16,10 @@ surfaces:
     env:
       - name: PUBLIC_ORIGIN
         value: https://toon.marshallku.dev
+      # The Service is ClusterIP and the cloudflared tunnel is the only ingress, so CF-Connecting-IP from a
+      # private peer is the real client (public story form rate limit).
+      - name: TRUST_PROXY_HEADER
+        value: "1"
       - name: BRIDGE_URL
         value: https://10.10.0.50:8941
       - name: MEDIA_BRIDGE_URL
