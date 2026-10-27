@@ -256,8 +256,8 @@ rewrites (`marshallku.com`, `api.marshallku.com`, `www.marshallku.com`) with it;
 it was not taken because `192.168.219.0/24` is the KT router default, so the
 route collides with whatever foreign LAN a client happens to sit behind.
 
-Change it on the **primary only** (app01) — pi01 and vpn01 are `adguardhome-sync`
-replicas and follow within 10 minutes, or immediately on
+Change it on the **primary only** (app01) — pi01 is an `adguardhome-sync`
+replica and follows within 10 minutes, or immediately on
 `docker restart adguardhome-sync`:
 
 ```sh

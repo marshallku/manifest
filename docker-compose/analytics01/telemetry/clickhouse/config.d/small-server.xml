@@ -1,7 +1,8 @@
-<!-- analytics01 has 8 GiB and one HDD. ClickHouse's defaults assume a dedicated, larger box. -->
+<!-- analytics01 has 4 GiB and one HDD. ClickHouse's defaults assume a dedicated, larger box. -->
 <clickhouse>
-    <!-- Half the VM: the collector, Docker and the page cache need the rest. -->
-    <max_server_memory_usage_to_ram_ratio>0.5</max_server_memory_usage_to_ram_ratio>
+    <!-- 3 of the 4 GiB: ClickHouse idles at ~1.6 GiB, so half would leave no headroom.
+         The collector (~30 MiB) and Docker fit in the rest. -->
+    <max_server_memory_usage_to_ram_ratio>0.75</max_server_memory_usage_to_ram_ratio>
     <mark_cache_size>268435456</mark_cache_size>
     <index_mark_cache_size>67108864</index_mark_cache_size>
     <uncompressed_cache_size>67108864</uncompressed_cache_size>

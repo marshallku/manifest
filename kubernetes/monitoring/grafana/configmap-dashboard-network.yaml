@@ -512,13 +512,6 @@ data:
                         {
                             "id": "renameByRegex",
                             "options": {
-                                "regex": "^tap104i0( .*)?$",
-                                "renamePattern": "vpn01$1"
-                            }
-                        },
-                        {
-                            "id": "renameByRegex",
-                            "options": {
                                 "regex": "^tap300i0( .*)?$",
                                 "renamePattern": "db01$1"
                             }
