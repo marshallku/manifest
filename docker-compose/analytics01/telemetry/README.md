@@ -9,10 +9,13 @@ and tests: [marshallku/telemetry](https://github.com/marshallku/telemetry). Desi
 | Host | `analytics01` (pve02 VM 301, 10.20.0.42), infra `tofu/analytics01.tf` |
 | Data | `/srv/analytics/{clickhouse,spool,demo}` on the `vault` HDD. **Disposable by decision**: not backed up |
 | Collector | `10.20.0.42:8080` — `POST /v1/batch`, `/metrics` (Prometheus job `telemetry`), `/healthz` |
+| Public ingest | `https://e.marshallku.dev/v1/batch` only (`kubernetes/telemetry/`, Cloudflare tunnel) |
 | ClickHouse | `10.20.0.42:8123`, users `default` (compose network only), `collector` (INSERT raw.events), `grafana_ro` (SELECT, readonly) |
 | Dashboards | Grafana → *Telemetry · Factory Overview*, *Telemetry · App Product* (`kubernetes/monitoring/grafana/`) |
 
-Nothing is public yet: there is no ingress. Real apps get an `e.marshallku.dev` route when they start sending.
+Apps send to `https://e.marshallku.dev/v1/batch`; nothing else on the collector is public. Each publishable
+key is limited to `PUBLISHABLE_EVENTS_PER_SECOND` (20) with a `PUBLISHABLE_BURST` (5,000), set in
+`docker-compose.yml`; past it the collector answers `429` with `Retry-After`. Server keys are not limited.
 
 ## Deploy
 
@@ -34,7 +37,8 @@ Bumping it = change the sha in `docker-compose.yml`; `migrate` applies any new t
 Everything fake lives in `env = 'demo'`, sent through the real collector by `telemetry fake`:
 
 ```sh
-# 30 days of history, plus the truth the dashboards' SQL must reproduce
+# 30 days of history, plus the truth the dashboards' SQL must reproduce. It uses publishable keys, so at
+# the default limit it trickles for a few minutes (the fake waits out each 429).
 docker compose run --rm fake fake --endpoint http://collector:8080 --backfill 30 --truth /demo/truth.json
 set -a; . ./.env; set +a
 docker compose run --rm -e CLICKHOUSE_URL=http://clickhouse:8123 -e CLICKHOUSE_USER=default \

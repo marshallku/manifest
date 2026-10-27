@@ -6,7 +6,7 @@
 # deploy applies the (idempotent) schema and the typed views of the collector's registry.
 
 x-telemetry: &telemetry
-    image: ghcr.io/marshallku/telemetry:98e5d74b3ebfdb5a63ba0d56800e871f2489a169
+    image: ghcr.io/marshallku/telemetry:a8629e5d11047a34233a6081b34c021cca6fe205
     restart: unless-stopped
 
 services:
@@ -54,8 +54,13 @@ services:
             CLICKHOUSE_URL: http://clickhouse:8123
             CLICKHOUSE_USER: collector
             CLICKHOUSE_PASSWORD: ${CH_COLLECTOR_PASSWORD:?}
+            # Per publishable key (they ship inside apps, so the public can write with them). Server
+            # keys are not limited. Raise for a big `fake --backfill`, or it trickles at this rate.
+            PUBLISHABLE_EVENTS_PER_SECOND: "20"
+            PUBLISHABLE_BURST: "5000"
         ports:
-            # Prometheus scrapes /metrics from k3s01. Not public yet: no ingress until real apps send.
+            # LAN only. Prometheus scrapes /metrics from k3s01; the public reaches /v1/batch alone,
+            # through e.marshallku.dev (kubernetes/telemetry/).
             - 10.20.0.42:8080:8080
         volumes:
             - /srv/analytics/spool:/data

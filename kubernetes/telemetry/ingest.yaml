@@ -1,0 +1,52 @@
+# Public ingest for the telemetry collector, which runs outside the cluster on analytics01
+# (docker-compose/analytics01/telemetry/). A selectorless Service + EndpointSlice gives the tunnel
+# controller an in-cluster name for 10.20.0.42:8080; the Ingress publishes /v1/batch and nothing else.
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: telemetry
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: collector-analytics01
+  namespace: telemetry
+  labels:
+    kubernetes.io/service-name: collector
+addressType: IPv4
+ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+endpoints:
+  - addresses: ["10.20.0.42"]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingest
+  namespace: telemetry
+spec:
+  ingressClassName: cloudflare-tunnel
+  rules:
+    - host: e.marshallku.dev
+      http:
+        paths:
+          # The controller passes this to the tunnel rule as a regex. `$` stops /v1/batchx and
+          # /v1/batch/...; the apiserver requires a leading "/", so the start cannot be anchored.
+          # Whatever else matches (/x/v1/batch) gets the collector mux's 404. /metrics and /healthz
+          # stay LAN only.
+          - path: /v1/batch$
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: collector
+                port:
+                  number: 8080
