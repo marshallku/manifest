@@ -6,7 +6,7 @@
 # deploy applies the (idempotent) schema and the typed views of the collector's registry.
 
 x-telemetry: &telemetry
-    image: ghcr.io/marshallku/telemetry:a8629e5d11047a34233a6081b34c021cca6fe205
+    image: ghcr.io/marshallku/telemetry:fd931bc424f67e21b0d9990b4dd1cdf575c49296
     restart: unless-stopped
 
 services:
