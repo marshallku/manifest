@@ -2,7 +2,9 @@
 # Namespace prerequisites (PV/PVC, sealed secrets) are in deploy/service/ → manifest kubernetes/service/toon-factory/.
 #
 # replicas 1 + Recreate: SQLite and content-addressed assets on a hostPath PV, one render-queue worker.
-# Memory: strip composition holds a few 800×10000 RGBA images and ffmpeg renders 1080×1920 shorts.
+# Memory: strip composition holds a few 800×10000 RGBA images, ffmpeg renders 1080×1920 shorts, and the reel editor
+# runs one heavy job at a time in the pod: a HyperFrames render (headless Chrome, one capture worker) or whisper.cpp
+# transcription (large-v3-turbo q5, ~1 GB). Two capture workers did not fit 3 GB.
 app: toon-factory
 
 surfaces:
@@ -37,4 +39,4 @@ surfaces:
         mountPath: /data
     resources:
       requests: { cpu: 50m, memory: 96Mi }
-      limits: { memory: 1Gi }
+      limits: { memory: 3Gi }
