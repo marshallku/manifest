@@ -9,7 +9,7 @@ app: toon-factory
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/toon-factory:9484f392b81f51dc9c228f0ffed340e31b2ae779
+    image: ghcr.io/marshallku/toon-factory:3d9a3b2963f1aa5dc7148f0c9ef57bce44697e89
     port: 8080
     host: toon.marshallku.dev
     healthPath: /healthz
