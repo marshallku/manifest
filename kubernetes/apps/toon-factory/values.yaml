@@ -11,17 +11,16 @@ surfaces:
   web:
     image: ghcr.io/marshallku/toon-factory:9387c32b3860e1aab6b1ee1f35b7a61d9bdb497d
     port: 8080
-    host: toon.marshallku.dev
+    # Tailnet only: no `host` (that would render a public tunnel Ingress). prd01's nginx fronts this NodePort as
+    # toon.in.marshallku.dev with the tailscale-only ACL (marshallku/edge).
+    nodePort: 30810
     healthPath: /healthz
     replicas: 1
     strategy: Recreate
     env:
       - name: PUBLIC_ORIGIN
-        value: https://toon.marshallku.dev
-      # The Service is ClusterIP and the cloudflared tunnel is the only ingress, so CF-Connecting-IP from a
-      # private peer is the real client (public story form rate limit).
-      - name: TRUST_PROXY_HEADER
-        value: "1"
+        value: https://toon.in.marshallku.dev
+      # No TRUST_PROXY_HEADER: there is no cloudflared in front anymore, so CF-Connecting-IP would be client-supplied.
       - name: BRIDGE_URL
         value: https://10.10.0.50:8941
       - name: MEDIA_BRIDGE_URL
