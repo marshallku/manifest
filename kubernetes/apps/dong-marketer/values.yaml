@@ -27,20 +27,18 @@ surfaces:
         value: https://10.10.0.51:8942
       - name: MEDIA_BRIDGE_CERT_SHA256
         value: 0b323ef7228c722fec6320dc748a9e2da7804cec8637f476486df223d034b056
-      # Cutover to insta (~/dev/insta README): relay webhooks there, dong's DM worker is off.
-      - name: DM_FORWARD
-        value: "1"
+      # Comment→DM automation runs in insta; the DM page is proxied there with INSTA_TOKEN (sealed), and
+      # webhooks reaching dong are relayed until the Meta callback URL points at insta.
       - name: INSTA_URL
         value: https://insta.marshallku.dev
     secretEnv:
       - PASSWORD_HASH
       - BRIDGE_TOKEN
       - BRIDGE_CERT_SHA256
-      - IG_APP_SECRET
-      - IG_VERIFY_TOKEN
       - IG_ACCESS_TOKEN
       - IG_USER_ID
       - MEDIA_BRIDGE_TOKEN
+      - INSTA_TOKEN
     volumes:
       - name: data
         claimName: dong-marketer-data
