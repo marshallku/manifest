@@ -1,0 +1,46 @@
+# insta data: SQLite (+ nightly VACUUM INTO backups) and the worker lock.
+# Static hostPath PV with Retain, like life-wiki — the chart only references this claim, so nothing
+# ArgoCD prunes can delete accounts, rules and DM history. The image runs as UID 10001: the directory
+# must be owned by it (see README — hostPath ignores fsGroup).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: insta-data-pv
+  labels:
+    app.kubernetes.io/name: insta
+    app.kubernetes.io/part-of: insta
+spec:
+  capacity:
+    storage: 2Gi # informational: hostPath has no quota
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  hostPath:
+    path: /var/lib/k3s-data/insta
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - k3s01
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: insta-data
+  namespace: insta
+  labels:
+    app.kubernetes.io/name: insta
+    app.kubernetes.io/part-of: insta
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: insta-data-pv

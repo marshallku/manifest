@@ -1,0 +1,38 @@
+# Source: ~/dev/insta/deploy/values.yaml (image tag bumped by deploy/release.sh).
+# Namespace prerequisites (PV/PVC, sealed secrets) live in manifest kubernetes/service/insta/.
+#
+# replicas 1 + Recreate is required: SQLite on a hostPath PV and one DM worker per database (the process
+# also holds an flock on /data/worker.lock before it recovers or sends anything).
+app: insta
+
+surfaces:
+  web:
+    image: ghcr.io/marshallku/insta:cd7b7a0550c3d94a2f4ebe0d4f6cc682983545da
+    port: 8080
+    host: insta.marshallku.dev
+    healthPath: /healthz
+    replicas: 1
+    strategy: Recreate
+    env:
+      - name: PUBLIC_ORIGIN
+        value: https://insta.marshallku.dev
+      - name: OWNER_USERNAME
+        value: marshall
+      # The Instagram app id (Meta dashboard → Instagram API → API setup with Instagram login); not a secret.
+      - name: IG_APP_ID
+        value: "956474640491944"
+      # Set to "1" during the cutover from dong-marketer: webhooks are stored, nothing is sent.
+      - name: PROCESSING_PAUSED
+        value: "0"
+    secretEnv:
+      - OWNER_PASSWORD_HASH
+      - TOKEN_KEY
+      - IG_APP_SECRET
+      - IG_VERIFY_TOKEN
+    volumes:
+      - name: data
+        claimName: insta-data
+        mountPath: /data
+    resources:
+      requests: { cpu: 20m, memory: 32Mi }
+      limits: { memory: 192Mi }
