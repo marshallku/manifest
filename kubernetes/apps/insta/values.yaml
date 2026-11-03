@@ -23,7 +23,7 @@ surfaces:
         value: "956474640491944"
       # Set to "1" during the cutover from dong-marketer: webhooks are stored, nothing is sent.
       - name: PROCESSING_PAUSED
-        value: "1"
+        value: "0"
     secretEnv:
       - OWNER_PASSWORD_HASH
       - TOKEN_KEY
