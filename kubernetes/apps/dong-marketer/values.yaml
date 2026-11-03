@@ -9,7 +9,7 @@ app: dong-marketer
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/dong-marketer:635f64ecf55a42222dd925fd6adcc7adba301f60
+    image: ghcr.io/marshallku/dong-marketer:ad21bdc1d6344411ed015260ad224234e86fec48
     port: 8080
     host: dong.marshallku.dev
     healthPath: /healthz
@@ -27,6 +27,11 @@ surfaces:
         value: https://10.10.0.51:8942
       - name: MEDIA_BRIDGE_CERT_SHA256
         value: 0b323ef7228c722fec6320dc748a9e2da7804cec8637f476486df223d034b056
+      # Cutover to insta (~/dev/insta README): relay webhooks there, dong's DM worker is off.
+      - name: DM_FORWARD
+        value: "1"
+      - name: INSTA_URL
+        value: https://insta.marshallku.dev
     secretEnv:
       - PASSWORD_HASH
       - BRIDGE_TOKEN
