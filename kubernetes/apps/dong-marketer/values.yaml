@@ -9,7 +9,7 @@ app: dong-marketer
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/dong-marketer:e68b2ec918cc66f32d5d890e6df68736f770cee1
+    image: ghcr.io/marshallku/dong-marketer:554ac10aaafa8a7a987ffa2c9b42a8f0e13650ea
     port: 8080
     host: dong.marshallku.dev
     healthPath: /healthz
