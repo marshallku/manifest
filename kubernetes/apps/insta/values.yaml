@@ -21,6 +21,9 @@ surfaces:
       # The Instagram app id (Meta dashboard → Instagram API → API setup with Instagram login); not a secret.
       - name: IG_APP_ID
         value: "956474640491944"
+      # The Meta app's dashboard id: links the members page to where Instagram testers are invited.
+      - name: META_APP_ID
+        value: "28642145322124284"
       # Set to "1" during the cutover from dong-marketer: webhooks are stored, nothing is sent.
       - name: PROCESSING_PAUSED
         value: "0"
