@@ -7,7 +7,7 @@ app: insta
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/insta:d846664c764b2aecc2564a0a703e888101001430
+    image: ghcr.io/marshallku/insta:45e8b40158f66b3813beef6c83c5933100633679
     port: 8080
     host: insta.marshallku.dev
     healthPath: /healthz
