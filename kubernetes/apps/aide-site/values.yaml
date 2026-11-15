@@ -9,7 +9,7 @@ imagePullSecret: ""
 
 surfaces:
   web:
-    image: ghcr.io/marshallku/aide-site:881757d5c1c9188ed736a513f9dbac99c556713b
+    image: ghcr.io/marshallku/aide-site:b08555fce25f1b41a4d0bdbbb9a3ef6090d69acf
     port: 8080
     host: aide.marshallku.dev
     healthPath: /healthz
