@@ -1,0 +1,21 @@
+# maar — MAAR 육아 앱의 가족 동기화 서버 (source: private 80rian/sssup → apps/maar/server, ADR-0002).
+#
+# Stores opaque per-household documents and merges them with the app's LWW rule. Namespace prerequisites —
+# maar-secret (sealed DATABASE_URL) and ghcr-secret (private package) — live in ../../service/maar/.
+# The image is pushed by `make server-deploy` in 80rian/sssup apps/maar (personal GHCR namespace); roll with
+# `kubectl -n maar rollout restart deploy`.
+app: maar
+
+surfaces:
+  api:
+    image: ghcr.io/marshallku/maar-api:latest
+    port: 8080
+    host: api-maar.marshallku.dev
+    healthPath: /healthz
+    env:
+      - name: MAAR_LOG
+        value: info
+    secretEnv: [DATABASE_URL]
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
