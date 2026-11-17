@@ -1,0 +1,39 @@
+# Local LLM inference: Ollama on the RTX 3060 Ti (8GB). Host: llm01 (10.20.0.22), models on
+# /srv/models (vault HDD, disposable — re-pullable; see infra tofu/llm01.tf and README.md here).
+#
+# Ollama has no authentication. It listens on the servers-segment address only, never published
+# through the tunnel; UIs (Open WebUI on k3s) call it over the LAN.
+
+services:
+    ollama:
+        image: ollama/ollama:0.40.16
+        container_name: ollama
+        restart: unless-stopped
+        ports:
+            - 10.20.0.22:11434:11434
+        volumes:
+            - /srv/models/ollama:/root/.ollama
+        environment:
+            # 8GB of VRAM holds one ≤12B Q4 model with its context, not two. Keep one resident and
+            # queue requests rather than spilling layers to the CPU.
+            OLLAMA_MAX_LOADED_MODELS: "1"
+            OLLAMA_NUM_PARALLEL: "1"
+            # Unload after 30 idle minutes so the card is free for other jobs. A cold load reads the
+            # model off the HDD (tens of seconds for ~7GB), so not shorter than that.
+            OLLAMA_KEEP_ALIVE: "30m"
+            OLLAMA_CONTEXT_LENGTH: "8192"
+            # Flash attention + an 8-bit KV cache roughly halves context memory, which is what lets a
+            # 12B Q4 model keep an 8k context inside 8GB.
+            OLLAMA_FLASH_ATTENTION: "1"
+            OLLAMA_KV_CACHE_TYPE: "q8_0"
+        deploy:
+            resources:
+                reservations:
+                    devices:
+                        - driver: nvidia
+                          count: 1
+                          capabilities: [gpu]
+        healthcheck:
+            test: ["CMD", "ollama", "list"]
+            interval: 30s
+            retries: 5

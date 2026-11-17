@@ -9,6 +9,7 @@ daemon. Which host a stack belongs to is decided by directory layout:
 | `pi01/<app>/` | `pi01` (192.168.219.127) | Raspberry Pi 4B, **arm64** — images must be multi-arch. |
 | `storage01/<app>/` | `storage01` (10.20.0.41) | VM on `pve02`. Bulk storage on a ZFS mirror of **SMR** drives — read that host's README before adding anything that writes small and often. |
 | `analytics01/<app>/` | `analytics01` (10.20.0.42) | VM on `pve02`. Product events (ClickHouse + telemetry collector) on the single 4TB `vault` HDD; the data is disposable and not backed up. |
+| `llm01/<app>/` | `llm01` (10.20.0.22) | VM on `pve02` with the RTX 3060 Ti passed through. Ollama; models on the `vault` HDD, re-pullable and not backed up. |
 
 `monitoring/` is the exception to "new stacks go under a host directory": it is
 an app01 stack, and for app01 the host directory *is* the flat root, so adding an
