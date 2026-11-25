@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: maar-admin-token
+  namespace: irang-dev
+spec:
+  encryptedData:
+    MAAR_ADMIN_TOKEN: AgCM9X7t7FaMhcazxp4areBWlrYKuj1bY+273oQPhjkGmCL0DcLaoAe1zCvI4FD4w1Vx6se74ciBoJDsi7zcfTCxisL7cJGwkruij2Frzl6BICNlcn8RPIjKdLbyIpYb9CZVa/O/vWyeeNWCTdcjyZtyTWKI5Waax19HeUTj5JbwRYGBkK8bfb1un8SGr3kcewO0ZFh2ufR7t8/sCyFnJOKF6BvIvUvMUGb2FK37XrbZ+0p3MJ0g/GqSCMQNZjbhG8f2U6TY4HMX/Wi5cLWnCCPcQKUnIwtKiJ1N2EbSUzQwEViAaXfvf03XKATclIrImV3pp/2oFaIzcDDy/lpkpLB36nu4UkRJOKlpQeMTbET00IeCKe5xnxPmSYQChvtCpmRRphozUIzSkMjUkNkausZzvHws0GNpPjDh/ET5Ahzh92jUZZyq38yMHuj5Y9MSFw7hPOdQuq9cZ5l/r2sxFPiEWXqR1ugJ9lJ9rIdLzc+cs9QQqcC+WE55XdZrRRsvgQ/BdsHWJ/l5n6Ria63qL6/C1V9uj1++HfwhqoemdonmztnTsY2XTItV5v+ULoCsRx/WctclrWnWsyDfqU6sxLcGm43Gnsj0NwGNQeOb0n4p+ic6+qpd0udr4CauQzqgfihiey7ijazdAaimrHu1fumm1QTazGOamAZ6Dt2GqOjrLsuCitTZJgwBSi1A9TCfnFd6cYfobTWSlKWroqe+Q9h/mQnKRQ54mxQsdzsam3mY9+pElzcOX5gEwUHLUu7dhbAxJ/51Ac+Ztzx0khnsay0r
+  template:
+    metadata:
+      name: maar-admin-token
+      namespace: irang-dev

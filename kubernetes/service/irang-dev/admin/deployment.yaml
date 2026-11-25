@@ -32,6 +32,13 @@ spec:
             # (apps/admin/web/next.config.ts) forward to this address.
             - name: IRANG_API_URL
               value: http://irang-api.irang-dev.svc.cluster.local:8080
+            # The /maar-api proxy attaches this to admin calls to maar-server (same token as maar/maar-secret);
+            # the MAAR API URL defaults to maar-api.maar.svc.cluster.local:8080.
+            - name: MAAR_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: maar-admin-token
+                  key: MAAR_ADMIN_TOKEN
           resources:
             requests:
               cpu: 50m

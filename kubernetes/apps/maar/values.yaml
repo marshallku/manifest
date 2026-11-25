@@ -15,7 +15,7 @@ surfaces:
     env:
       - name: MAAR_LOG
         value: info
-    secretEnv: [DATABASE_URL]
+    secretEnv: [DATABASE_URL, MAAR_ADMIN_TOKEN]
     resources:
       requests: { cpu: 10m, memory: 32Mi }
       limits: { memory: 128Mi }

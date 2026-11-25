@@ -10,8 +10,12 @@ cert=$(mktemp)
 trap 'rm -f "$cert"' EXIT
 kubectl -n kube-system get secret -l sealedsecrets.bitnami.com/sealed-secrets-key \
   -o jsonpath='{.items[0].data.tls\.crt}' | base64 -d > "$cert"
+# Merged into the existing file so other sealed keys (MAAR_ADMIN_TOKEN) survive a database reset.
+merge=()
+[[ -f "$here/sealed-secret.yaml" ]] && merge=(--merge-into "$here/sealed-secret.yaml")
 "$manifest/scripts/provision-db.sh" maar \
   | sed -n 's/^DATABASE_URL=//p' | tr -d '\n' \
   | kubectl create secret generic maar-secret -n maar --from-file=DATABASE_URL=/dev/stdin --dry-run=client -o yaml \
-  | kubeseal --cert "$cert" --format yaml > "$here/sealed-secret.yaml"
+  | if (( ${#merge[@]} )); then kubeseal --cert "$cert" --format yaml "${merge[@]}"; \
+    else kubeseal --cert "$cert" --format yaml > "$here/sealed-secret.yaml"; fi
 echo "sealed → $here/sealed-secret.yaml (commit it; then kubectl apply -f $here/)"
