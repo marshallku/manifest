@@ -36,6 +36,13 @@ directory. Apply the sealed secret and check the key unsealed (`kubectl -n maar 
 '.data | keys[]'` prints key names only, never values) *before* pushing a `values.yaml` that references a new key; otherwise the new
 pod cannot start (the old one keeps serving).
 
+## ANTHROPIC_API_KEY
+
+"AI로 읽기" on maar-server calls Claude with this key; without it the route answers `ai_unconfigured`. Run
+[`seal-anthropic.sh`](./seal-anthropic.sh) yourself (hidden prompt → kubeseal, merged into `sealed-secret.yaml` and
+applied), check the key name is listed, *then* add `ANTHROPIC_API_KEY` to `secretEnv` in `../../apps/maar/values.yaml`
+and commit both (the same secret-first order as `MAAR_ADMIN_TOKEN`).
+
 ## ghcr-secret
 
 Cloned from `dash` like the other factory namespaces (one GHCR credential in the homelab):
